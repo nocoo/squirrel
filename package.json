@@ -28,6 +28,7 @@
     "test:api": "vitest run --config vitest.api.config.ts",
     "test:e2e:bdd": "bunx playwright test",
     "db:migrate": "wrangler d1 migrations apply DB --local --env local",
+    "db:seed": "bun scripts/seed-local.ts",
     "deploy": "bun scripts/deploy.ts",
     "deploy:check": "bun run build && wrangler deploy --dry-run",
     "verify:production": "bun scripts/verify-deployment.ts",
