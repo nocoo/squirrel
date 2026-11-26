@@ -14,6 +14,8 @@ if (
   config.vars.PUBLIC_ORIGIN !== "https://squirrel.hexly.ai" ||
   config.vars.LOCAL_USER_EMAIL ||
   config.vars.CF_ACCESS_TEAM_DOMAIN !== "nocoo" ||
+  config.vars.CF_ACCESS_AUD !==
+    "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56" ||
   config.d1_databases[0]?.database_id !== "47120ece-5886-42a6-9382-72b3d907fcda" ||
   config.kv_namespaces[0]?.id !== "574ee7f1a325425d82da165712ea7427" ||
   config.workers_dev !== false ||

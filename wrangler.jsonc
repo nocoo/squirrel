@@ -30,6 +30,7 @@
     "ENVIRONMENT": "production",
     "PUBLIC_ORIGIN": "https://squirrel.hexly.ai",
     "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+    "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
     "LOCAL_USER_EMAIL": "",
     "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
   },
@@ -55,6 +56,7 @@
         "ENVIRONMENT": "local",
         "PUBLIC_ORIGIN": "https://squirrel.dev.hexly.ai",
         "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+        "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
         "LOCAL_USER_EMAIL": "developer@example.test",
         "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
       },
@@ -80,6 +82,7 @@
         "ENVIRONMENT": "test",
         "PUBLIC_ORIGIN": "http://127.0.0.1:27067",
         "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+        "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
         "LOCAL_USER_EMAIL": "test@example.test",
         "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
       },

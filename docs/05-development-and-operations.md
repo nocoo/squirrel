@@ -37,11 +37,12 @@ bun run dev             # 启动 Vite + Worker 本地服务 (https://squirrel.de
 - **Worker**：`squirrel-web`（自定义域名 `squirrel.hexly.ai`，`workers_dev: false`）
 - **D1 数据库**：`squirrel-db`（ID: `47120ece-5886-42a6-9382-72b3d907fcda`）
 - **KV 命名空间**：`squirrel-oauth-kv`（ID: `574ee7f1a325425d82da165712ea7427`）
-- **必需 Worker Secrets**（首次上线前手工注入，不提交进 Git）：
+- **必需 Worker Secrets 与 Access AUD**：
+  - `CF_ACCESS_AUD` 配置在 [wrangler.jsonc](file:///Users/nocoo/workspace/personal/squirrel/wrangler.jsonc) 的 `vars` 中。
+  - `MASTER_KEY` 需在首次上线前手工注入生产 Worker，不提交进 Git：
 
   ```sh
-  openssl rand -base64 32 | wrangler secret put MASTER_KEY
-  wrangler secret put CF_ACCESS_AUD
+  openssl rand -base64 32 | bunx wrangler secret put MASTER_KEY --name squirrel-web
   ```
 - **Cloudflare Access 策略**（Zero Trust -> Self-hosted Application）：
   - 仅保护三条路径：`squirrel.hexly.ai/admin*`、`squirrel.hexly.ai/api/admin*`、`squirrel.hexly.ai/authorize*`。
