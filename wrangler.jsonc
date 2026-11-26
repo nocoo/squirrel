@@ -32,7 +32,7 @@
     "CF_ACCESS_TEAM_DOMAIN": "nocoo",
     "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
     "LOCAL_USER_EMAIL": "",
-    "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+    "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,oauth-redirect-sandbox.googleusercontent.com,oauth-redirect-test.googleusercontent.com,vertexaisearch.cloud.google.com,gemini.google.com,localhost,127.0.0.1"
   },
   "d1_databases": [
     {
@@ -58,7 +58,7 @@
         "CF_ACCESS_TEAM_DOMAIN": "nocoo",
         "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
         "LOCAL_USER_EMAIL": "developer@example.test",
-        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,oauth-redirect-sandbox.googleusercontent.com,oauth-redirect-test.googleusercontent.com,vertexaisearch.cloud.google.com,gemini.google.com,localhost,127.0.0.1"
       },
       "d1_databases": [
         {
@@ -84,7 +84,7 @@
         "CF_ACCESS_TEAM_DOMAIN": "nocoo",
         "CF_ACCESS_AUD": "bd2de3c9093ed620bbddc709dbe628515d1c024dbbd1a73f0c2c072c1f4dbd56",
         "LOCAL_USER_EMAIL": "test@example.test",
-        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,oauth-redirect-sandbox.googleusercontent.com,oauth-redirect-test.googleusercontent.com,vertexaisearch.cloud.google.com,gemini.google.com,localhost,127.0.0.1"
       },
       "d1_databases": [
         {

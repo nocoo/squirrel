@@ -2,12 +2,18 @@ import type { ClientRegistrationCallbackResult } from "@cloudflare/workers-oauth
 import { getAllowedRedirectHosts } from "../lib/env";
 import type { WorkerBindings } from "../types";
 
+const MAX_REDIRECT_URIS = 20;
+const MAX_REDIRECT_URI_LENGTH = 2048;
+
 export function validateRedirectUris(
   redirectUris: unknown,
   env: WorkerBindings,
 ): { ok: true; uris: string[] } | { ok: false; description: string } {
   if (!Array.isArray(redirectUris) || redirectUris.length === 0) {
     return { ok: false, description: "redirect_uris must be a non-empty array" };
+  }
+  if (redirectUris.length > MAX_REDIRECT_URIS) {
+    return { ok: false, description: `redirect_uris cannot exceed ${MAX_REDIRECT_URIS} entries` };
   }
 
   const allowedHosts = getAllowedRedirectHosts(env);
@@ -17,11 +23,21 @@ export function validateRedirectUris(
     if (typeof raw !== "string" || !raw.trim()) {
       return { ok: false, description: "redirect_uris entries must be non-empty strings" };
     }
+    if (raw.length > MAX_REDIRECT_URI_LENGTH) {
+      return { ok: false, description: "redirect_uri exceeds maximum length" };
+    }
+    if (raw.includes("#")) {
+      return { ok: false, description: "redirect_uri must not contain a fragment" };
+    }
     let parsed: URL;
     try {
       parsed = new URL(raw);
     } catch {
       return { ok: false, description: `Invalid redirect_uri URL: ${raw}` };
+    }
+
+    if (parsed.username || parsed.password) {
+      return { ok: false, description: "redirect_uri must not contain userinfo" };
     }
 
     const host = parsed.hostname.toLowerCase();
@@ -49,6 +65,7 @@ export function dcrClientRegistrationCheck(
   if (result.ok) {
     return undefined;
   }
+  console.warn("[dcr-guard] rejected redirect_uri:", result.description);
   return {
     code: "invalid_redirect_uri",
     description: result.description,

@@ -130,7 +130,8 @@ export async function createIsolatedWorker(vars: WorkerVars = {}): Promise<Isola
           CF_ACCESS_TEAM_DOMAIN: "nocoo",
           CF_ACCESS_AUD: TEST_AUD,
           LOCAL_USER_EMAIL: "test@example.test",
-          ALLOWED_REDIRECT_HOSTS: "oauth-redirect.googleusercontent.com,localhost,127.0.0.1",
+          ALLOWED_REDIRECT_HOSTS:
+            "oauth-redirect.googleusercontent.com,oauth-redirect-sandbox.googleusercontent.com,oauth-redirect-test.googleusercontent.com,vertexaisearch.cloud.google.com,gemini.google.com,localhost,127.0.0.1",
           ...vars,
         },
         serviceBindings: {

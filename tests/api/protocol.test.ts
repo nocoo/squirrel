@@ -157,7 +157,14 @@ describe("L3 HTTP Protocol & API Integration", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         client_name: "Gemini Custom App",
-        redirect_uris: [redirectUri],
+        redirect_uris: [
+          redirectUri,
+          "https://oauth-redirect-sandbox.googleusercontent.com/r/user_bound_custom-mcp-test",
+          "https://oauth-redirect-test.googleusercontent.com/r/user_bound_custom-mcp-test",
+          "https://oauth-redirect.googleusercontent.com/a/user_bound_custom-mcp-test",
+          "https://oauth-redirect-sandbox.googleusercontent.com/a/user_bound_custom-mcp-test",
+          "https://oauth-redirect-test.googleusercontent.com/a/user_bound_custom-mcp-test",
+        ],
         grant_types: ["authorization_code", "refresh_token"],
         response_types: ["code"],
         token_endpoint_auth_method: "none",

@@ -30,7 +30,18 @@ describe("DCR guard & CF Access middleware", () => {
 
     expect(
       dcrClientRegistrationCheck(
-        { redirect_uris: ["https://oauth-redirect.googleusercontent.com/r/user_1"] },
+        {
+          redirect_uris: [
+            "https://oauth-redirect.googleusercontent.com/r/user_1",
+            "https://oauth-redirect-sandbox.googleusercontent.com/r/user_1",
+            "https://oauth-redirect-test.googleusercontent.com/r/user_1",
+            "https://oauth-redirect.googleusercontent.com/a/app_1",
+            "https://oauth-redirect-sandbox.googleusercontent.com/a/app_1",
+            "https://oauth-redirect-test.googleusercontent.com/a/app_1",
+            "https://vertexaisearch.cloud.google.com/oauth-redirect",
+            "https://gemini.google.com/oauth/callback",
+          ],
+        },
         h.env,
       ),
     ).toBeUndefined();
@@ -39,6 +50,18 @@ describe("DCR guard & CF Access middleware", () => {
     ).toBeUndefined();
     expect(
       dcrClientRegistrationCheck({ redirect_uris: ["https://evil.example.com/cb"] }, h.env)?.status,
+    ).toBe(400);
+    expect(
+      dcrClientRegistrationCheck(
+        { redirect_uris: ["https://oauth-redirect.googleusercontent.com/r/user_1#frag"] },
+        h.env,
+      )?.status,
+    ).toBe(400);
+    expect(
+      dcrClientRegistrationCheck(
+        { redirect_uris: ["https://user:pass@oauth-redirect.googleusercontent.com/r/user_1"] },
+        h.env,
+      )?.status,
     ).toBe(400);
     expect(
       dcrClientRegistrationCheck(
