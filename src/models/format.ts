@@ -1,4 +1,5 @@
 import type { BadgeTone } from "@nocoo/basalt/components/badge";
+import type { DatePickerPreset } from "@nocoo/basalt/components/date-picker";
 import type { TagColor } from "@nocoo/basalt/components/tag-badge";
 import type { AuditDecision, ClientPolicyItem, ClientStatus, RegistrationType } from "./types";
 
@@ -19,6 +20,25 @@ export const FOLDER_COLOR_OPTIONS: { value: TagColor; label: string }[] = [
   { value: "rose", label: "玫瑰" },
   { value: "slate", label: "石板灰" },
 ];
+
+export const FOLDER_COLOR_VALUES: readonly TagColor[] = FOLDER_COLOR_OPTIONS.map(
+  (opt) => opt.value,
+);
+
+export const FOLDER_COLOR_LABELS: Partial<Record<TagColor, string>> = Object.fromEntries(
+  FOLDER_COLOR_OPTIONS.map((opt) => [opt.value, opt.label]),
+) as Partial<Record<TagColor, string>>;
+
+export function buildExpiryPresets(nowMs = Date.now()): DatePickerPreset[] {
+  const isoInDays = (days: number) =>
+    new Date(nowMs + days * 86_400_000).toISOString().slice(0, 10);
+  return [
+    { label: "30 天后", value: isoInDays(30) },
+    { label: "90 天后", value: isoInDays(90) },
+    { label: "180 天后", value: isoInDays(180) },
+    { label: "1 年后", value: isoInDays(365) },
+  ];
+}
 
 export function resolveFolderTagColor(color: string): TagColor {
   return FOLDER_COLOR_ALLOWLIST.has(color as TagColor) ? (color as TagColor) : "amber";

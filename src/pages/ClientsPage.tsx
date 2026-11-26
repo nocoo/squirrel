@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  DescriptionList,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,26 +20,19 @@ import {
   Input,
   Label,
   LayerCard,
+  Skeleton,
   Textarea,
   toast,
 } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import {
-  Ban,
-  Bot,
-  Copy,
-  KeyRound,
-  Pause,
-  Play,
-  RefreshCw,
-  Shield,
-  Trash2,
-} from "@nocoo/basalt/icons";
+import { Ban, Bot, KeyRound, Pause, Play, RefreshCw, Shield, Trash2 } from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FormSelect } from "@/components/FormSelect";
+import { OptionalDatePicker } from "@/components/OptionalDatePicker";
 import { ScopeSelector } from "@/components/ScopeSelector";
 import {
   formatDateTime,
@@ -229,15 +223,6 @@ export default function ClientsPage() {
     }
   };
 
-  const copyText = async (value: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success(`${label}已复制`);
-    } catch {
-      toast.danger("复制失败");
-    }
-  };
-
   return (
     <div className="space-y-basalt-layout-lg">
       <PageHeader
@@ -265,9 +250,29 @@ export default function ClientsPage() {
       {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       {loading && clients.length === 0 ? (
-        <LayerCard>
-          <LayerCard.Loading label="加载消费方列表..." />
-        </LayerCard>
+        <div
+          role="status"
+          aria-label="加载消费方列表..."
+          className="grid gap-basalt-layout md:grid-cols-2"
+        >
+          {Array.from({ length: 4 }, (_, idx) => (
+            <LayerCard key={idx}>
+              <LayerCard.Header>
+                <div className="min-w-0 space-y-basalt-space-xs">
+                  <Skeleton width={160} height={18} />
+                  <Skeleton width={120} height={14} />
+                </div>
+              </LayerCard.Header>
+              <LayerCard.Body className="space-y-basalt-layout-sm">
+                <Skeleton variant="block" height={92} />
+                <div className="flex justify-end gap-basalt-space-lg">
+                  <Skeleton width={88} height={28} />
+                  <Skeleton width={72} height={28} />
+                </div>
+              </LayerCard.Body>
+            </LayerCard>
+          ))}
+        </div>
       ) : clients.length === 0 ? (
         <LayerCard>
           <LayerCard.Empty
@@ -305,27 +310,31 @@ export default function ClientsPage() {
                   </div>
                 </LayerCard.Header>
                 <LayerCard.Body className="space-y-basalt-layout-sm">
-                  <LayerCard.Well className="space-y-basalt-space-md p-basalt-card-sm text-basalt-sm">
-                    <div className="flex items-center justify-between gap-basalt-space-lg">
-                      <span className="text-basalt-muted-foreground">授权范围</span>
-                      <span className="font-medium">{summarizeClientScope(client)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-basalt-space-lg">
-                      <span className="text-basalt-muted-foreground">明文读取</span>
-                      <span>{client.allowPlaintextRead ? "允许 get_secret" : "仅元数据"}</span>
-                    </div>
-                    {client.tokenPreview && (
-                      <div className="flex items-center justify-between gap-basalt-space-lg">
-                        <span className="text-basalt-muted-foreground">Token 掩码</span>
-                        <span className="font-mono">{client.tokenPreview}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between gap-basalt-space-lg">
-                      <span className="text-basalt-muted-foreground">累计调用 / 最近使用</span>
-                      <span className="tabular-nums">
-                        {client.callCount} 次 · {formatDateTime(client.lastUsedAt)}
-                      </span>
-                    </div>
+                  <LayerCard.Well className="p-basalt-card-sm">
+                    <DescriptionList columns={2} className="text-basalt-sm">
+                      <DescriptionList.Item term="授权范围">
+                        <span className="font-medium">{summarizeClientScope(client)}</span>
+                      </DescriptionList.Item>
+                      <DescriptionList.Item term="明文读取">
+                        <span>{client.allowPlaintextRead ? "允许 get_secret" : "仅元数据"}</span>
+                      </DescriptionList.Item>
+                      <DescriptionList.Item term="累计调用">
+                        <span className="tabular-nums">{client.callCount} 次</span>
+                      </DescriptionList.Item>
+                      <DescriptionList.Item term="最近使用">
+                        <span className="tabular-nums">{formatDateTime(client.lastUsedAt)}</span>
+                      </DescriptionList.Item>
+                      {client.tokenPreview && (
+                        <DescriptionList.Item term="Token 掩码">
+                          <span className="font-mono">{client.tokenPreview}</span>
+                        </DescriptionList.Item>
+                      )}
+                      {client.expiresAt && (
+                        <DescriptionList.Item term="有效期">
+                          <span className="tabular-nums">{client.expiresAt.slice(0, 10)}</span>
+                        </DescriptionList.Item>
+                      )}
+                    </DescriptionList>
                   </LayerCard.Well>
 
                   <div className="flex flex-wrap items-center justify-end gap-basalt-space-lg">
@@ -440,13 +449,10 @@ export default function ClientsPage() {
 
             {createForm.type === "bot_token" ? (
               <Field label="过期日期（可选）" htmlFor="create-bot-expires">
-                <Input
+                <OptionalDatePicker
                   id="create-bot-expires"
-                  type="date"
                   value={createForm.expiresAtDate}
-                  onChange={(e) =>
-                    setCreateForm((prev) => ({ ...prev, expiresAtDate: e.target.value }))
-                  }
+                  onChange={(value) => setCreateForm((prev) => ({ ...prev, expiresAtDate: value }))}
                 />
               </Field>
             ) : (
@@ -608,55 +614,32 @@ export default function ClientsPage() {
               {issuedCredential.kind === "bot_token" ? (
                 <div className="space-y-basalt-space-lg">
                   <Label>Authorization Bearer Token</Label>
-                  <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
-                    {issuedCredential.token}
-                  </LayerCard.Well>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void copyText(issuedCredential.token, "Bot Token")}
-                  >
-                    <Copy className="size-basalt-icon-lg" strokeWidth={1.5} />
-                    复制 Bot Token
-                  </Button>
+                  <ClipboardText
+                    text={issuedCredential.token}
+                    copyLabel="复制 Bot Token"
+                    className="flex w-full"
+                  />
                 </div>
               ) : (
                 <div className="space-y-basalt-layout-sm">
                   <div className="space-y-basalt-space-sm">
                     <Label>Client ID</Label>
-                    <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
-                      {issuedCredential.clientId}
-                    </LayerCard.Well>
+                    <ClipboardText
+                      text={issuedCredential.clientId}
+                      copyLabel="复制 Client ID"
+                      className="flex w-full"
+                    />
                   </div>
                   {issuedCredential.clientSecret && (
                     <div className="space-y-basalt-space-sm">
                       <Label>Client Secret</Label>
-                      <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
-                        {issuedCredential.clientSecret}
-                      </LayerCard.Well>
+                      <ClipboardText
+                        text={issuedCredential.clientSecret}
+                        copyLabel="复制 Client Secret"
+                        className="flex w-full"
+                      />
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-basalt-space-lg">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void copyText(issuedCredential.clientId, "Client ID")}
-                    >
-                      复制 Client ID
-                    </Button>
-                    {issuedCredential.clientSecret && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() =>
-                          void copyText(issuedCredential.clientSecret ?? "", "Client Secret")
-                        }
-                      >
-                        复制 Client Secret
-                      </Button>
-                    )}
-                  </div>
                 </div>
               )}
             </DialogBody>

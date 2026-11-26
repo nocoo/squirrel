@@ -84,10 +84,12 @@ export function ScopeSelector({
         <div className="grid gap-basalt-layout md:grid-cols-2">
           <LayerCard padding="sm" outlined>
             <LayerCard.Header>
-              <LayerCard.Title className="text-basalt-base">按文件夹授权</LayerCard.Title>
-              <LayerCard.Description className="text-basalt-sm">
-                已选 {allowedFolderIds.length} 个（包含文件夹内动态新增密钥）
-              </LayerCard.Description>
+              <div className="min-w-0 space-y-basalt-space-xs">
+                <LayerCard.Title>按文件夹授权</LayerCard.Title>
+                <LayerCard.Description className="text-basalt-sm">
+                  已选 {allowedFolderIds.length} 个（包含文件夹内动态新增密钥）
+                </LayerCard.Description>
+              </div>
             </LayerCard.Header>
             <LayerCard.Body>
               {folders.length === 0 ? (
@@ -137,10 +139,12 @@ export function ScopeSelector({
 
           <LayerCard padding="sm" outlined>
             <LayerCard.Header>
-              <LayerCard.Title className="text-basalt-base">按单个密钥授权</LayerCard.Title>
-              <LayerCard.Description className="text-basalt-sm">
-                已选 {allowedSecretIds.length} 个（叠加授权独立密钥）
-              </LayerCard.Description>
+              <div className="min-w-0 space-y-basalt-space-xs">
+                <LayerCard.Title>按单个密钥授权</LayerCard.Title>
+                <LayerCard.Description className="text-basalt-sm">
+                  已选 {allowedSecretIds.length} 个（叠加授权独立密钥）
+                </LayerCard.Description>
+              </div>
             </LayerCard.Header>
             <LayerCard.Body>
               {secrets.length === 0 ? (

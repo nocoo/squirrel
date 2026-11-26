@@ -19,12 +19,16 @@ import {
   Input,
   Label,
   LayerCard,
+  Skeleton,
   Switch,
   Text,
   Textarea,
   toast,
 } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
+import { FilterBar, FilterChip } from "@nocoo/basalt/components/filter-bar";
+import { InputGroup } from "@nocoo/basalt/components/input-group";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   Select,
@@ -43,13 +47,16 @@ import {
   TableRow,
 } from "@nocoo/basalt/components/table";
 import { TagBadge } from "@nocoo/basalt/components/tag-badge";
-import { Copy, Eye, Folder, FolderPlus, Pencil, Plus, Search, Trash2 } from "@nocoo/basalt/icons";
+import { TagColorPicker } from "@nocoo/basalt/components/tag-color-picker";
+import { Eye, Folder, FolderPlus, Pencil, Plus, Search, Trash2, X } from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FormSelect } from "@/components/FormSelect";
+import { OptionalDatePicker } from "@/components/OptionalDatePicker";
 import {
-  FOLDER_COLOR_OPTIONS,
+  FOLDER_COLOR_LABELS,
+  FOLDER_COLOR_VALUES,
   formatDateTime,
   getExpiryBadge,
   resolveFolderTagColor,
@@ -150,6 +157,20 @@ export default function SecretsPage() {
   const [secretError, setSecretError] = useState<string | null>(null);
   const [secretFieldErrors, setSecretFieldErrors] = useState<SecretFieldErrors>({});
   const [deletingSecret, setDeletingSecret] = useState<SecretItem | null>(null);
+
+  const hasActiveFilters =
+    selectedFolder !== "all" || searchQuery.trim().length > 0 || serviceFilter !== "all";
+
+  const clearFilters = () => {
+    setSelectedFolder("all");
+    setSearchQuery("");
+    setServiceFilter("all");
+  };
+
+  const selectedFolderLabel =
+    selectedFolder === "__uncategorized__"
+      ? "未分类"
+      : (folders.find((f) => f.id === selectedFolder)?.name ?? selectedFolder);
 
   const openNewFolder = () => {
     setFolderForm(EMPTY_FOLDER_FORM);
@@ -286,15 +307,6 @@ export default function SecretsPage() {
     }
   };
 
-  const copyValue = async (text: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success(`${label}已复制到剪贴板`);
-    } catch {
-      toast.danger("复制失败，请手动复制");
-    }
-  };
-
   const folderOptions = [
     { value: "__none__", label: "未分类" },
     ...folders.map((f) => ({ value: f.id, label: f.name })),
@@ -318,22 +330,60 @@ export default function SecretsPage() {
           </div>
         }
         filters={
-          <div className="flex flex-wrap items-center gap-basalt-layout-sm">
-            <div className="relative w-basalt-64">
-              <Search
-                className="pointer-events-none absolute left-basalt-space-lg top-2.5 size-basalt-icon-lg text-basalt-muted-foreground"
-                strokeWidth={1.5}
-              />
-              <Input
+          <FilterBar
+            label="筛选密钥"
+            active={hasActiveFilters}
+            onClear={clearFilters}
+            clearLabel="清除筛选"
+            chips={
+              hasActiveFilters ? (
+                <>
+                  {selectedFolder !== "all" && (
+                    <FilterChip
+                      label="文件夹"
+                      value={selectedFolderLabel}
+                      onRemove={() => setSelectedFolder("all")}
+                    />
+                  )}
+                  {searchQuery.trim() && (
+                    <FilterChip
+                      label="关键词"
+                      value={searchQuery.trim()}
+                      onRemove={() => setSearchQuery("")}
+                    />
+                  )}
+                  {serviceFilter !== "all" && (
+                    <FilterChip
+                      label="服务"
+                      value={serviceFilter}
+                      onRemove={() => setServiceFilter("all")}
+                    />
+                  )}
+                </>
+              ) : undefined
+            }
+          >
+            <InputGroup className="w-full sm:w-basalt-64">
+              <InputGroup.Addon align="start">
+                <Search strokeWidth={1.5} />
+              </InputGroup.Addon>
+              <InputGroup.Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索名称、slug、服务或标签..."
-                className="pl-basalt-8"
                 aria-label="搜索密钥"
               />
-            </div>
+              {searchQuery && (
+                <InputGroup.Button
+                  aria-label="清空搜索"
+                  onClick={() => setSearchQuery("")}
+                  icon={<X strokeWidth={1.5} />}
+                />
+              )}
+            </InputGroup>
+
             <Select value={serviceFilter} onValueChange={setServiceFilter}>
-              <SelectTrigger size="sm" className="w-44" aria-label="按服务筛选">
+              <SelectTrigger className="w-full sm:w-44" aria-label="按服务筛选">
                 <SelectValue placeholder="全部服务" />
               </SelectTrigger>
               <SelectContent>
@@ -345,7 +395,7 @@ export default function SecretsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FilterBar>
         }
       />
 
@@ -354,90 +404,144 @@ export default function SecretsPage() {
       <div className="grid gap-basalt-layout lg:grid-cols-[240px_1fr]">
         <LayerCard padding="sm" className="h-fit">
           <LayerCard.Header>
-            <LayerCard.Title className="text-basalt-base">文件夹</LayerCard.Title>
+            <LayerCard.Title>文件夹</LayerCard.Title>
           </LayerCard.Header>
           <LayerCard.Body className="space-y-basalt-space-sm">
-            <Button
-              type="button"
-              variant={selectedFolder === "all" ? "secondary" : "ghost"}
-              size="sm"
-              className="w-full justify-between"
-              onClick={() => setSelectedFolder("all")}
-            >
-              <span className="flex items-center gap-basalt-space-lg">
-                <Folder className="size-basalt-icon-lg" strokeWidth={1.5} />
-                全部密钥
-              </span>
-              <Badge tone="neutral" variant="soft">
-                {secrets.length}
-              </Badge>
-            </Button>
-            <Button
-              type="button"
-              variant={selectedFolder === "__uncategorized__" ? "secondary" : "ghost"}
-              size="sm"
-              className="w-full justify-between"
-              onClick={() => setSelectedFolder("__uncategorized__")}
-            >
-              <span className="flex items-center gap-basalt-space-lg">
-                <Folder
-                  className="size-basalt-icon-lg text-basalt-muted-foreground"
-                  strokeWidth={1.5}
-                />
-                未分类
-              </span>
-              <Badge tone="neutral" variant="soft">
-                {uncategorizedCount}
-              </Badge>
-            </Button>
-
-            {folders.map((folder) => (
-              <div key={folder.id} className="group flex items-center gap-basalt-space-sm">
+            {loading && secrets.length === 0 ? (
+              <div role="status" aria-label="加载文件夹..." className="space-y-basalt-space-lg">
+                {Array.from({ length: 4 }, (_, idx) => (
+                  <Skeleton key={idx} variant="block" height={28} />
+                ))}
+              </div>
+            ) : (
+              <>
                 <Button
                   type="button"
-                  variant={selectedFolder === folder.id ? "secondary" : "ghost"}
+                  variant={selectedFolder === "all" ? "secondary" : "ghost"}
                   size="sm"
-                  className="min-w-0 flex-1 justify-between"
-                  onClick={() => setSelectedFolder(folder.id)}
+                  className="w-full justify-between"
+                  onClick={() => setSelectedFolder("all")}
                 >
-                  <span className="truncate">
-                    <TagBadge
-                      name={folder.name}
-                      color={resolveFolderTagColor(folder.color)}
-                      size="sm"
-                    />
+                  <span className="flex items-center gap-basalt-space-lg">
+                    <Folder className="size-basalt-icon-lg" strokeWidth={1.5} />
+                    全部密钥
                   </span>
                   <Badge tone="neutral" variant="soft">
-                    {folder.secretCount}
+                    {secrets.length}
                   </Badge>
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`编辑文件夹 ${folder.name}`}
-                  onClick={() => openEditFolder(folder)}
+                  variant={selectedFolder === "__uncategorized__" ? "secondary" : "ghost"}
+                  size="sm"
+                  className="w-full justify-between"
+                  onClick={() => setSelectedFolder("__uncategorized__")}
                 >
-                  <Pencil className="size-basalt-icon" strokeWidth={1.5} />
+                  <span className="flex items-center gap-basalt-space-lg">
+                    <Folder
+                      className="size-basalt-icon-lg text-basalt-muted-foreground"
+                      strokeWidth={1.5}
+                    />
+                    未分类
+                  </span>
+                  <Badge tone="neutral" variant="soft">
+                    {uncategorizedCount}
+                  </Badge>
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`删除文件夹 ${folder.name}`}
-                  onClick={() => setDeletingFolder(folder)}
-                >
-                  <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
-                </Button>
-              </div>
-            ))}
+
+                {folders.map((folder) => (
+                  <div key={folder.id} className="group flex items-center gap-basalt-space-sm">
+                    <Button
+                      type="button"
+                      variant={selectedFolder === folder.id ? "secondary" : "ghost"}
+                      size="sm"
+                      className="min-w-0 flex-1 justify-between"
+                      onClick={() => setSelectedFolder(folder.id)}
+                    >
+                      <span className="truncate">
+                        <TagBadge
+                          name={folder.name}
+                          color={resolveFolderTagColor(folder.color)}
+                          size="sm"
+                        />
+                      </span>
+                      <Badge tone="neutral" variant="soft">
+                        {folder.secretCount}
+                      </Badge>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`编辑文件夹 ${folder.name}`}
+                      onClick={() => openEditFolder(folder)}
+                    >
+                      <Pencil className="size-basalt-icon" strokeWidth={1.5} />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`删除文件夹 ${folder.name}`}
+                      onClick={() => setDeletingFolder(folder)}
+                    >
+                      <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
+                    </Button>
+                  </div>
+                ))}
+              </>
+            )}
           </LayerCard.Body>
         </LayerCard>
 
         <LayerCard padding="none">
           <LayerCard.Body className="p-0">
             {loading && secrets.length === 0 ? (
-              <LayerCard.Loading label="加载密钥列表..." className="p-basalt-card-lg" />
+              <div role="status" aria-label="加载密钥列表...">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>名称 / Slug</TableHead>
+                      <TableHead>文件夹</TableHead>
+                      <TableHead>服务</TableHead>
+                      <TableHead>掩码预览</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead>最近读取</TableHead>
+                      <TableHead className="text-right">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.from({ length: 6 }, (_, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          <div className="space-y-basalt-space-xs">
+                            <Skeleton width={120} height={14} />
+                            <Skeleton width={96} height={12} />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={72} height={20} />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={64} height={14} />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={88} height={14} />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={48} height={20} />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton width={96} height={14} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton width={76} height={24} className="ml-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             ) : filteredSecrets.length === 0 ? (
               <LayerCard.Empty
                 title="暂无密钥"
@@ -587,11 +691,13 @@ export default function SecretsPage() {
               />
             </Field>
             <Field label="颜色标识" htmlFor="folder-color">
-              <FormSelect
+              <TagColorPicker
                 id="folder-color"
-                value={folderForm.color}
-                onValueChange={(value) => setFolderForm((prev) => ({ ...prev, color: value }))}
-                options={FOLDER_COLOR_OPTIONS}
+                label="颜色标识"
+                colors={FOLDER_COLOR_VALUES}
+                labels={FOLDER_COLOR_LABELS}
+                value={resolveFolderTagColor(folderForm.color)}
+                onValueChange={(color) => setFolderForm((prev) => ({ ...prev, color }))}
               />
             </Field>
             <Field label="描述（可选）" htmlFor="folder-desc">
@@ -668,7 +774,7 @@ export default function SecretsPage() {
                     setSecretForm((prev) => ({ ...prev, service: e.target.value }));
                     setSecretFieldErrors((prev) => ({ ...prev, service: undefined }));
                   }}
-                  placeholder="cloudflare / github / openai"
+                  placeholder="例如：cloudflare、github"
                   required
                 />
               </Field>
@@ -722,13 +828,10 @@ export default function SecretsPage() {
                 />
               </Field>
               <Field label="过期日期（可选）" htmlFor="secret-expires">
-                <Input
+                <OptionalDatePicker
                   id="secret-expires"
-                  type="date"
                   value={secretForm.expiresAtDate}
-                  onChange={(e) =>
-                    setSecretForm((prev) => ({ ...prev, expiresAtDate: e.target.value }))
-                  }
+                  onChange={(value) => setSecretForm((prev) => ({ ...prev, expiresAtDate: value }))}
                 />
               </Field>
             </div>
@@ -788,21 +891,17 @@ export default function SecretsPage() {
               <Text className="font-mono text-basalt-sm text-basalt-muted-foreground">
                 Slug: {revealed.slug}
               </Text>
-              <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-md select-all">
-                {revealed.value}
-              </LayerCard.Well>
+              <ClipboardText
+                text={revealed.value}
+                copyLabel="复制密钥明文"
+                className="flex w-full"
+              />
             </DialogBody>
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={clearRevealed}>
+            <Button type="button" onClick={clearRevealed}>
               关闭
             </Button>
-            {revealed && (
-              <Button type="button" onClick={() => void copyValue(revealed.value, "密钥明文")}>
-                <Copy className="size-basalt-icon-lg" strokeWidth={1.5} />
-                复制明文
-              </Button>
-            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

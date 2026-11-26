@@ -1,4 +1,4 @@
-import { ContentIsland, LayerCard, SidebarDrawer } from "@nocoo/basalt";
+import { ContentIsland, SidebarDrawer, Skeleton } from "@nocoo/basalt";
 import { AppHeader, AppHeaderMenuButton, ProjectLinks } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import { ThemeToggle } from "@nocoo/basalt/components/theme-toggle";
@@ -14,6 +14,18 @@ export const PAGE_TITLES: Record<string, string> = {
   "/admin/logs": "审计日志",
 };
 
+function PageSkeleton() {
+  return (
+    <div role="status" aria-label="页面加载中..." className="space-y-basalt-layout-lg">
+      <div className="space-y-basalt-space-lg">
+        <Skeleton width={160} height={28} />
+        <Skeleton width="45%" height={16} />
+      </div>
+      <Skeleton variant="block" height={240} />
+    </div>
+  );
+}
+
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const isMobile = useIsMobile();
@@ -23,9 +35,10 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
   const normalized = pathname === "/admin/" ? "/admin" : pathname;
   const title = PAGE_TITLES[normalized] ?? "概览";
-  const breadcrumbs: { href?: string; label: ReactNode }[] = [
-    { href: "/admin", label: "Squirrel" },
-  ];
+
+  useEffect(() => {
+    document.title = `${title} · Squirrel`;
+  }, [title]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: pathname triggers close on route change
   useEffect(() => {
@@ -80,9 +93,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               />
             ) : null
           }
-          breadcrumbs={breadcrumbs}
-          breadcrumbsLabel="面包屑导航"
-          title={title}
           actions={
             <>
               <ProjectLinks github="nocoo/squirrel" hexly="squirrel" name="Squirrel" />
@@ -99,7 +109,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
 
         <div className="flex min-h-0 flex-1 flex-col px-basalt-space-lg pb-basalt-space-lg md:px-basalt-layout-sm md:pb-basalt-layout-sm">
           <ContentIsland>
-            <Suspense key={pathname} fallback={<LayerCard.Loading label="页面加载中..." />}>
+            <Suspense key={pathname} fallback={<PageSkeleton />}>
               {children}
             </Suspense>
           </ContentIsland>

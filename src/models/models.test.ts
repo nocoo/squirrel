@@ -3,6 +3,9 @@ import { getUserDisplay } from "@/lib/user-display";
 import { APP_VERSION } from "@/lib/version";
 import { buildDailyChartData, computeAllowRate } from "@/models/dashboard";
 import {
+  FOLDER_COLOR_LABELS,
+  FOLDER_COLOR_VALUES,
+  buildExpiryPresets,
   formatDateTime,
   formatShortDate,
   getAuditDecisionMeta,
@@ -213,6 +216,8 @@ describe("validators", () => {
 
 describe("formatters & dashboard transforms", () => {
   it("resolves folder colors and dates", () => {
+    expect(FOLDER_COLOR_VALUES).toHaveLength(6);
+    expect(FOLDER_COLOR_LABELS.amber).toBe("琥珀");
     expect(resolveFolderTagColor("teal")).toBe("teal");
     expect(resolveFolderTagColor("unknown")).toBe("amber");
     expect(formatDateTime(null)).toBe("从未");
@@ -220,6 +225,13 @@ describe("formatters & dashboard transforms", () => {
     expect(formatDateTime("2026-11-26T08:00:00.000Z")).toContain("26");
     expect(formatShortDate("2026-11-26")).toBe("11-26");
     expect(formatShortDate("short")).toBe("short");
+    const presets = buildExpiryPresets(Date.parse("2026-11-26T00:00:00Z"));
+    expect(presets).toEqual([
+      { label: "30 天后", value: "2026-12-26" },
+      { label: "90 天后", value: "2027-02-24" },
+      { label: "180 天后", value: "2027-05-25" },
+      { label: "1 年后", value: "2027-11-26" },
+    ]);
   });
 
   it("computes expiry badges", () => {

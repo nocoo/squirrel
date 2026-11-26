@@ -4,16 +4,22 @@ import type { AuditLogItem, ClientPolicyItem } from "@/models/types";
 
 const PAGE_SIZE = 25;
 
-export function useAuditLogsViewModel() {
+export interface AuditLogInitialFilters {
+  client?: string;
+  tool?: string;
+  decision?: string;
+}
+
+export function useAuditLogsViewModel(initialFilters?: AuditLogInitialFilters) {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [total, setTotal] = useState(0);
   const [clients, setClients] = useState<ClientPolicyItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [clientFilter, setClientFilter] = useState("all");
-  const [decisionFilter, setDecisionFilter] = useState("all");
-  const [toolFilter, setToolFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState(initialFilters?.client || "all");
+  const [decisionFilter, setDecisionFilter] = useState(initialFilters?.decision || "all");
+  const [toolFilter, setToolFilter] = useState(initialFilters?.tool || "all");
   const [page, setPage] = useState(1);
 
   const loadClients = useCallback(async () => {
@@ -54,6 +60,8 @@ export function useAuditLogsViewModel() {
   }, [loadLogs]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasActiveFilters =
+    clientFilter !== "all" || decisionFilter !== "all" || toolFilter !== "all";
 
   const updateClientFilter = useCallback((value: string) => {
     setClientFilter(value);
@@ -67,6 +75,13 @@ export function useAuditLogsViewModel() {
 
   const updateToolFilter = useCallback((value: string) => {
     setToolFilter(value);
+    setPage(1);
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setClientFilter("all");
+    setDecisionFilter("all");
+    setToolFilter("all");
     setPage(1);
   }, []);
 
@@ -84,6 +99,8 @@ export function useAuditLogsViewModel() {
     setDecisionFilter: updateDecisionFilter,
     toolFilter,
     setToolFilter: updateToolFilter,
+    hasActiveFilters,
+    clearFilters,
     loading,
     error,
     reload: loadLogs,

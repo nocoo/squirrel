@@ -1,4 +1,4 @@
-import { Badge, Button, LayerCard, SegmentControl, Text } from "@nocoo/basalt";
+import { Badge, Button, LayerCard, SegmentControl, Skeleton, Text } from "@nocoo/basalt";
 import {
   AXIS_CONFIG,
   ChartFrame,
@@ -118,12 +118,20 @@ export default function DashboardPage() {
       <SectionRule title="调用趋势" hint="每日放行与拒绝的 MCP 工具调用与后台明文查看次数" />
       <LayerCard>
         <LayerCard.Header>
-          <LayerCard.Title>每日调用分布</LayerCard.Title>
-          <LayerCard.Description>近 {days} 天放行 vs 拒绝次数统计</LayerCard.Description>
+          <div className="min-w-0 space-y-basalt-space-xs">
+            <LayerCard.Title>每日调用分布</LayerCard.Title>
+            <LayerCard.Description>近 {days} 天放行 vs 拒绝次数统计</LayerCard.Description>
+          </div>
         </LayerCard.Header>
         <LayerCard.Body>
           {loading && !stats ? (
-            <LayerCard.Loading label="加载趋势图..." />
+            <div role="status" aria-label="加载趋势图..." className="space-y-basalt-layout-sm">
+              <div className="flex items-center gap-basalt-layout">
+                <Skeleton width={56} height={14} />
+                <Skeleton width={76} height={14} />
+              </div>
+              <Skeleton variant="block" className="h-basalt-56" />
+            </div>
           ) : (
             <ChartFrame
               ariaLabel={`近 ${days} 天调用趋势柱状图`}
@@ -187,11 +195,19 @@ export default function DashboardPage() {
       <div className="grid gap-basalt-layout lg:grid-cols-2">
         <LayerCard>
           <LayerCard.Header>
-            <LayerCard.Title>高频密钥 Top 10</LayerCard.Title>
-            <LayerCard.Description>按累计读取次数排序</LayerCard.Description>
+            <div className="min-w-0 space-y-basalt-space-xs">
+              <LayerCard.Title>高频密钥 Top 10</LayerCard.Title>
+              <LayerCard.Description>按累计读取次数排序</LayerCard.Description>
+            </div>
           </LayerCard.Header>
           <LayerCard.Body>
-            {!stats || stats.topSecrets.length === 0 ? (
+            {loading && !stats ? (
+              <div role="status" aria-label="加载高频密钥..." className="space-y-basalt-space-lg">
+                {Array.from({ length: 4 }, (_, idx) => (
+                  <Skeleton key={idx} variant="block" height={48} />
+                ))}
+              </div>
+            ) : !stats || stats.topSecrets.length === 0 ? (
               <LayerCard.Empty title="暂无读取记录" description="密钥被读取后将在此显示排名" />
             ) : (
               <div className="space-y-basalt-space-lg">
@@ -220,12 +236,20 @@ export default function DashboardPage() {
 
         <LayerCard>
           <LayerCard.Header>
-            <LayerCard.Title>临期与僵尸密钥提醒</LayerCard.Title>
-            <LayerCard.Description>30 天内过期或超过 90 天未使用的启用密钥</LayerCard.Description>
+            <div className="min-w-0 space-y-basalt-space-xs">
+              <LayerCard.Title>临期与僵尸密钥提醒</LayerCard.Title>
+              <LayerCard.Description>30 天内过期或超过 90 天未使用的启用密钥</LayerCard.Description>
+            </div>
           </LayerCard.Header>
           <LayerCard.Body>
-            {!stats ||
-            (stats.expiringSoonSecrets.length === 0 && stats.staleSecrets.length === 0) ? (
+            {loading && !stats ? (
+              <div role="status" aria-label="加载密钥提醒..." className="space-y-basalt-space-lg">
+                {Array.from({ length: 4 }, (_, idx) => (
+                  <Skeleton key={idx} variant="block" height={48} />
+                ))}
+              </div>
+            ) : !stats ||
+              (stats.expiringSoonSecrets.length === 0 && stats.staleSecrets.length === 0) ? (
               <LayerCard.Empty title="状态健康" description="暂无临期或长期未用的僵尸密钥" />
             ) : (
               <div className="space-y-basalt-space-lg">

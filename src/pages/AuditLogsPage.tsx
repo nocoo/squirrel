@@ -1,5 +1,6 @@
-import { Badge, Button, LayerCard, TablePager } from "@nocoo/basalt";
+import { Badge, Button, LayerCard, Skeleton, TablePager } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { FilterBar, FilterChip } from "@nocoo/basalt/components/filter-bar";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   Select,
@@ -17,11 +18,15 @@ import {
   TableRow,
 } from "@nocoo/basalt/components/table";
 import { Info, RefreshCw } from "@nocoo/basalt/icons";
+import { useCallback } from "react";
+import { useSearchParams } from "react-router";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { formatDateTime, getAuditDecisionMeta } from "@/models/format";
+import type { AuditDecision } from "@/models/types";
 import { useAuditLogsViewModel } from "@/viewmodels/useAuditLogsViewModel";
 
 export default function AuditLogsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
     logs,
     total,
@@ -35,10 +40,57 @@ export default function AuditLogsPage() {
     setDecisionFilter,
     toolFilter,
     setToolFilter,
+    hasActiveFilters,
+    clearFilters,
     loading,
     error,
     reload,
-  } = useAuditLogsViewModel();
+  } = useAuditLogsViewModel({
+    client: searchParams.get("client") ?? undefined,
+    tool: searchParams.get("tool") ?? undefined,
+    decision: searchParams.get("decision") ?? undefined,
+  });
+
+  const syncParams = useCallback(
+    (next: { client?: string; tool?: string; decision?: string }) => {
+      const updated = new URLSearchParams();
+      if (next.client && next.client !== "all") updated.set("client", next.client);
+      if (next.tool && next.tool !== "all") updated.set("tool", next.tool);
+      if (next.decision && next.decision !== "all") updated.set("decision", next.decision);
+      setSearchParams(updated, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const handleClientChange = (val: string) => {
+    setClientFilter(val);
+    syncParams({ client: val, tool: toolFilter, decision: decisionFilter });
+  };
+
+  const handleToolChange = (val: string) => {
+    setToolFilter(val);
+    syncParams({ client: clientFilter, tool: val, decision: decisionFilter });
+  };
+
+  const handleDecisionChange = (val: string) => {
+    setDecisionFilter(val);
+    syncParams({ client: clientFilter, tool: toolFilter, decision: val });
+  };
+
+  const handleClearFilters = () => {
+    clearFilters();
+    syncParams({});
+  };
+
+  const clientDisplayLabel =
+    clientFilter === "admin"
+      ? "管理员后台"
+      : (clients.find((c) => c.clientId === clientFilter)?.displayName ?? clientFilter);
+
+  const decisionLabel =
+    decisionFilter !== "all"
+      ? getAuditDecisionMeta(decisionFilter as AuditDecision).label
+      : decisionFilter;
 
   return (
     <div className="space-y-basalt-layout-lg">
@@ -52,9 +104,41 @@ export default function AuditLogsPage() {
           </Button>
         }
         filters={
-          <div className="flex flex-wrap items-center gap-basalt-layout-sm">
-            <Select value={clientFilter} onValueChange={setClientFilter}>
-              <SelectTrigger size="sm" className="w-48" aria-label="按消费方筛选">
+          <FilterBar
+            label="筛选审计日志"
+            active={hasActiveFilters}
+            onClear={handleClearFilters}
+            clearLabel="清除筛选"
+            chips={
+              hasActiveFilters ? (
+                <>
+                  {clientFilter !== "all" && (
+                    <FilterChip
+                      label="消费方"
+                      value={clientDisplayLabel}
+                      onRemove={() => handleClientChange("all")}
+                    />
+                  )}
+                  {toolFilter !== "all" && (
+                    <FilterChip
+                      label="工具"
+                      value={toolFilter}
+                      onRemove={() => handleToolChange("all")}
+                    />
+                  )}
+                  {decisionFilter !== "all" && (
+                    <FilterChip
+                      label="决策"
+                      value={decisionLabel}
+                      onRemove={() => handleDecisionChange("all")}
+                    />
+                  )}
+                </>
+              ) : undefined
+            }
+          >
+            <Select value={clientFilter} onValueChange={handleClientChange}>
+              <SelectTrigger className="w-48" aria-label="按消费方筛选">
                 <SelectValue placeholder="全部消费方" />
               </SelectTrigger>
               <SelectContent>
@@ -68,8 +152,8 @@ export default function AuditLogsPage() {
               </SelectContent>
             </Select>
 
-            <Select value={toolFilter} onValueChange={setToolFilter}>
-              <SelectTrigger size="sm" className="w-40" aria-label="按工具筛选">
+            <Select value={toolFilter} onValueChange={handleToolChange}>
+              <SelectTrigger className="w-40" aria-label="按工具筛选">
                 <SelectValue placeholder="全部操作" />
               </SelectTrigger>
               <SelectContent>
@@ -82,8 +166,8 @@ export default function AuditLogsPage() {
               </SelectContent>
             </Select>
 
-            <Select value={decisionFilter} onValueChange={setDecisionFilter}>
-              <SelectTrigger size="sm" className="w-36" aria-label="按决策筛选">
+            <Select value={decisionFilter} onValueChange={handleDecisionChange}>
+              <SelectTrigger className="w-36" aria-label="按决策筛选">
                 <SelectValue placeholder="全部结果" />
               </SelectTrigger>
               <SelectContent>
@@ -95,7 +179,7 @@ export default function AuditLogsPage() {
                 <SelectItem value="not_found">未找到</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FilterBar>
         }
       />
 
@@ -112,7 +196,48 @@ export default function AuditLogsPage() {
       <LayerCard padding="none">
         <LayerCard.Body className="p-0">
           {loading && logs.length === 0 ? (
-            <LayerCard.Loading label="加载审计日志..." className="p-basalt-card-lg" />
+            <div role="status" aria-label="加载审计日志...">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>时间</TableHead>
+                    <TableHead>消费方</TableHead>
+                    <TableHead>工具 / 操作</TableHead>
+                    <TableHead>目标密钥</TableHead>
+                    <TableHead>取用原因</TableHead>
+                    <TableHead>决策</TableHead>
+                    <TableHead className="text-right">耗时</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Array.from({ length: 8 }, (_, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <Skeleton width={96} height={14} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton width={110} height={14} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton width={88} height={14} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton width={104} height={14} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton width={160} height={14} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton width={48} height={20} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton width={40} height={14} className="ml-auto" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : logs.length === 0 ? (
             <LayerCard.Empty
               title="暂无审计日志"

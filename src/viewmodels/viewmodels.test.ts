@@ -355,15 +355,23 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
       total: 30,
     });
 
-    const { result } = renderHook(() => useAuditLogsViewModel());
+    const { result } = renderHook(() =>
+      useAuditLogsViewModel({ client: "bot_1", tool: "get_secret" }),
+    );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.totalPages).toBe(2);
+    expect(result.current.hasActiveFilters).toBe(true);
 
     act(() => result.current.setPage(2));
     act(() => result.current.setClientFilter("bot_1"));
     expect(result.current.page).toBe(1);
     act(() => result.current.setDecisionFilter("denied"));
     act(() => result.current.setToolFilter("get_secret"));
+    act(() => result.current.clearFilters());
+    expect(result.current.hasActiveFilters).toBe(false);
+    expect(result.current.clientFilter).toBe("all");
+    expect(result.current.decisionFilter).toBe("all");
+    expect(result.current.toolFilter).toBe("all");
     await waitFor(() => expect(api.listLogs).toHaveBeenCalled());
   });
 
