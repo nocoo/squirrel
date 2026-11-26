@@ -110,8 +110,32 @@ describe("DCR guard & CF Access middleware", () => {
     devApp.post("/api/test", (c) => c.json({ ok: true }));
 
     const devEnv: WorkerBindings = { ...h.env, ENVIRONMENT: "local", LOCAL_USER_EMAIL: "dev@test" };
+    const missingOrigin = await devApp.fetch(
+      new Request("http://127.0.0.1/api/test", { method: "POST" }),
+      devEnv,
+    );
+    expect(missingOrigin.status).toBe(403);
+
+    const crossSite = await devApp.fetch(
+      new Request("http://127.0.0.1/api/test", {
+        method: "POST",
+        headers: { Origin: "http://127.0.0.1", "Sec-Fetch-Site": "cross-site" },
+      }),
+      devEnv,
+    );
+    expect(crossSite.status).toBe(403);
+
+    const nonLocalHost = await devApp.fetch(
+      new Request("https://evil.example.com/api/test", {
+        method: "POST",
+        headers: { Origin: "https://evil.example.com" },
+      }),
+      devEnv,
+    );
+    expect(nonLocalHost.status).toBe(401);
+
     const badOrigin = await devApp.fetch(
-      new Request("https://squirrel.test/api/test", {
+      new Request("http://127.0.0.1/api/test", {
         method: "POST",
         headers: { Origin: "https://evil.example" },
       }),
@@ -120,9 +144,9 @@ describe("DCR guard & CF Access middleware", () => {
     expect(badOrigin.status).toBe(403);
 
     const goodOrigin = await devApp.fetch(
-      new Request("https://squirrel.test/api/test", {
+      new Request("http://127.0.0.1/api/test", {
         method: "POST",
-        headers: { Origin: "https://squirrel.test" },
+        headers: { Origin: "http://127.0.0.1" },
       }),
       devEnv,
     );
@@ -383,10 +407,11 @@ describe("Bot bearer tokens & MCP tools", () => {
       },
     });
     expect(getDenied.result?.isError).toBe(true);
-    expect(JSON.parse(getDenied.result?.content?.[0]?.text ?? "{}").error).toBe("ACCESS_DENIED");
+    expect(JSON.parse(getDenied.result?.content?.[0]?.text ?? "{}").error).toBe("SECRET_NOT_FOUND");
 
     const logs = await queryAuditLogs(h.env.DB, { clientId: "cli_mcp" });
     expect(logs.total).toBe(5);
+    expect(logs.items[0]).toMatchObject({ decision: "denied", errorCode: "ACCESS_DENIED" });
 
     // Filtered list_secrets + suspended client across all tools
     const filteredList = await callRpc({

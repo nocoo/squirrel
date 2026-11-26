@@ -1,11 +1,24 @@
 import { getClientPolicy, insertAuditLog, touchClientUsage } from "../lib/db";
 import type { AuditDecision, ClientPolicyRecord, McpCallerContext, SecretSummary } from "../types";
 
+function parseIsoTimestamp(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ts = Date.parse(iso);
+  return Number.isNaN(ts) ? null : ts;
+}
+
+function isExpired(expiresAt: string | null | undefined, nowIso: string): boolean {
+  const expiryTs = parseIsoTimestamp(expiresAt);
+  if (expiryTs === null) return false;
+  const nowTs = parseIsoTimestamp(nowIso) ?? Date.now();
+  return expiryTs <= nowTs;
+}
+
 export function isPolicyActive(policy: ClientPolicyRecord, nowIso: string): boolean {
   if (policy.status !== "active") {
     return false;
   }
-  if (policy.expiresAt && policy.expiresAt <= nowIso) {
+  if (isExpired(policy.expiresAt, nowIso)) {
     return false;
   }
   return true;
@@ -132,7 +145,7 @@ export function evaluateSecretRead(
       message: `密钥 [${secret.slug}] 当前处于停用状态。`,
     };
   }
-  if (secret.expiresAt && secret.expiresAt <= nowIso) {
+  if (isExpired(secret.expiresAt, nowIso)) {
     return {
       ok: false,
       decision: "expired",

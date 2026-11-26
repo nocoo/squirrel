@@ -281,21 +281,27 @@ export function buildMcpServer(
       const evaluation = evaluateSecretRead(active.policy, secret, hasReadScope, nowIso);
 
       if (!evaluation.ok || !secret) {
+        const auditDecision = evaluation.ok ? "not_found" : evaluation.decision;
+        const auditErrorCode = evaluation.ok ? "SECRET_NOT_FOUND" : evaluation.errorCode;
         await scheduleAudit(
           writeToolAudit(env.DB, caller, {
             toolName: "get_secret",
             secretId: secret?.id ?? args.secret_id,
             secretSlug: secret?.slug ?? null,
             reason: args.reason,
-            decision: evaluation.ok ? "not_found" : evaluation.decision,
-            errorCode: evaluation.ok ? "SECRET_NOT_FOUND" : evaluation.errorCode,
+            decision: auditDecision,
+            errorCode: auditErrorCode,
             startedAtMs,
           }),
         );
+        const maskExistence = !evaluation.ok && evaluation.errorCode === "ACCESS_DENIED";
         return textResult(
           {
-            error: evaluation.ok ? "SECRET_NOT_FOUND" : evaluation.errorCode,
-            message: evaluation.ok ? "Secret not found" : evaluation.message,
+            error: maskExistence ? "SECRET_NOT_FOUND" : auditErrorCode,
+            message:
+              evaluation.ok || maskExistence
+                ? "未找到指定的密钥记录，请先调用 search_secrets 或 list_secrets 确认可用标识。"
+                : evaluation.message,
           },
           true,
         );

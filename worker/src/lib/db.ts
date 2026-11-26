@@ -334,8 +334,11 @@ export async function listSecrets(
     params.push(filters.service);
   }
 
+  const SECRET_SUMMARY_COLUMNS =
+    "s.id, s.folder_id, s.slug, s.name, s.service, s.description, s.tags_json, s.metadata_json, s.masked_preview, s.key_version, s.is_enabled, s.expires_at, s.last_used_at, s.use_count, s.created_at, s.updated_at";
+
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const sql = `SELECT s.*, f.name AS folder_name, f.slug AS folder_slug
+  const sql = `SELECT ${SECRET_SUMMARY_COLUMNS}, f.name AS folder_name, f.slug AS folder_slug
                FROM secrets s
                LEFT JOIN folders f ON f.id = s.folder_id
                ${where}

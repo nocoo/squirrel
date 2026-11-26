@@ -32,6 +32,10 @@ describe("L3 HTTP Protocol & API Integration", () => {
 
     const liveRes = await fetch(`${w.origin}/api/live`);
     expect(liveRes.status).toBe(200);
+    expect(liveRes.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(liveRes.headers.get("x-frame-options")).toBe("DENY");
+    expect(liveRes.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(liveRes.headers.get("content-security-policy")).toContain("script-src 'self'");
     expect(await liveRes.json()).toMatchObject({
       status: "ok",
       service: "squirrel",
@@ -96,10 +100,29 @@ describe("L3 HTTP Protocol & API Integration", () => {
       authorization_response_iss_parameter_supported: true,
     });
 
-    // 3. Seed folder + 3 secrets via Admin API
-    const fldRes = await fetch(`${w.origin}/api/admin/folders`, {
+    // 3. Enforce Origin / Sec-Fetch-Site on mutating Admin API, then seed folder + 3 secrets
+    const missingOriginRes = await fetch(`${w.origin}/api/admin/folders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "bad", name: "Bad" }),
+    });
+    expect(missingOriginRes.status).toBe(403);
+
+    const crossSiteRes = await fetch(`${w.origin}/api/admin/folders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: w.origin,
+        "Sec-Fetch-Site": "cross-site",
+      },
+      body: JSON.stringify({ slug: "bad", name: "Bad" }),
+    });
+    expect(crossSiteRes.status).toBe(403);
+
+    const adminHeaders = { "Content-Type": "application/json", Origin: w.origin };
+    const fldRes = await fetch(`${w.origin}/api/admin/folders`, {
+      method: "POST",
+      headers: adminHeaders,
       body: JSON.stringify({ slug: "gemini", name: "Gemini Tools", color: "amber" }),
     });
     expect(fldRes.status).toBe(201);
@@ -108,7 +131,7 @@ describe("L3 HTTP Protocol & API Integration", () => {
     const createSec = async (payload: Record<string, unknown>) => {
       const r = await fetch(`${w.origin}/api/admin/secrets`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: adminHeaders,
         body: JSON.stringify(payload),
       });
       expect(r.status).toBe(201);
@@ -201,7 +224,7 @@ describe("L3 HTTP Protocol & API Integration", () => {
 
     const decisionRes = await fetch(`${w.origin}/api/admin/oauth/tx/${txId}/decision`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({
         decision: "approve",
         csrfToken: txDetail.csrfToken,
@@ -292,7 +315,7 @@ describe("L3 HTTP Protocol & API Integration", () => {
     // 10. Instant suspend takes effect immediately without waiting for token expiry
     await fetch(`${w.origin}/api/admin/clients/${clientId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({ status: "suspended" }),
     });
     const suspendedCall = await callMcp({
@@ -307,7 +330,33 @@ describe("L3 HTTP Protocol & API Integration", () => {
     const suspendedRpc = (await suspendedCall.json()) as { result: { isError?: boolean } };
     expect(suspendedRpc.result.isError).toBe(true);
 
-    // 11. POST /oauth/revoke revokes token & marks client revoked
+    // Reactivate client, then verify bogus /oauth/revoke does NOT revoke the client policy (P0 fix)
+    await fetch(`${w.origin}/api/admin/clients/${clientId}`, {
+      method: "PATCH",
+      headers: adminHeaders,
+      body: JSON.stringify({ status: "active" }),
+    });
+    const bogusRevoke = await fetch(`${w.origin}/oauth/revoke`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        token: "fake_unauthenticated_token",
+        client_id: clientId,
+      }).toString(),
+    });
+    expect(bogusRevoke.status).toBe(200);
+    const stillWorking = await callMcp({
+      jsonrpc: "2.0",
+      id: 31,
+      method: "tools/call",
+      params: { name: "whoami", arguments: {} },
+    });
+    expect(stillWorking.status).toBe(200);
+    expect(
+      ((await stillWorking.json()) as { result?: { isError?: boolean } }).result?.isError,
+    ).toBeUndefined();
+
+    // 11. POST /oauth/revoke with real refresh_token revokes grant & blocks MCP with 401
     const revokeRes = await fetch(`${w.origin}/oauth/revoke`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -330,17 +379,18 @@ describe("L3 HTTP Protocol & API Integration", () => {
   it("supports headless Bot Bearer Token creation, folder ACL, rotation, and revocation", async () => {
     const w = await createIsolatedWorker();
     cleanups.push(w.close);
+    const adminHeaders = { "Content-Type": "application/json", Origin: w.origin };
 
     const fRes = await fetch(`${w.origin}/api/admin/folders`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({ slug: "bots", name: "Bots", color: "teal" }),
     });
     const folderId = ((await fRes.json()) as { item: { id: string } }).item.id;
 
     await fetch(`${w.origin}/api/admin/secrets`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({
         folderId,
         slug: "ci-pat",
@@ -352,7 +402,7 @@ describe("L3 HTTP Protocol & API Integration", () => {
 
     const botRes = await fetch(`${w.origin}/api/admin/clients`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({
         type: "bot_token",
         displayName: "Nightly Bot",
@@ -386,7 +436,7 @@ describe("L3 HTTP Protocol & API Integration", () => {
     // Rotate token -> old fails 401, new succeeds
     const rotRes = await fetch(`${w.origin}/api/admin/clients/${bot.item.clientId}/rotate-token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: adminHeaders,
       body: JSON.stringify({}),
     });
     expect(rotRes.status).toBe(200);

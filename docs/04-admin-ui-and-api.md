@@ -21,7 +21,7 @@
 | `/api/admin/folders`                        | `GET` / `POST`   | 文件夹列表（含密钥计数）与新建                        |
 | `/api/admin/folders/:id`                    | `PUT` / `DELETE` | 更新或删除文件夹（密钥置未分类并清理策略引用）        |
 | `/api/admin/secrets`                        | `GET` / `POST`   | 密钥元数据检索与加密入库                              |
-| `/api/admin/secrets/:id/reveal`             | `GET`            | 管理员解密查看明文并写入 `admin_reveal` 审计日志      |
+| `/api/admin/secrets/:id/reveal`             | `POST`           | 管理员解密查看明文并写入 `admin_reveal` 审计日志      |
 | `/api/admin/secrets/:id`                    | `PUT` / `DELETE` | 更新元数据/轮换密钥值或删除密钥                       |
 | `/api/admin/clients`                        | `GET` / `POST`   | 消费方列表、新建 `bot_token` 或 `static_oauth` 客户端 |
 | `/api/admin/clients/:clientId`              | `PATCH`          | 实时修改别名、文件夹/单密钥权限、明文开关与状态       |

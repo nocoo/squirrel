@@ -134,10 +134,10 @@ describe("adminRoutes L2 coverage", () => {
       ).status,
     ).toBe(409);
 
-    const revealRes = await req(`/secrets/${secretId}/reveal`);
+    const revealRes = await req(`/secrets/${secretId}/reveal`, "POST", {});
     expect(revealRes.status).toBe(200);
     expect(((await revealRes.json()) as { value: string }).value).toBe("ghp_secret_value_12345");
-    expect((await req("/secrets/missing/reveal")).status).toBe(404);
+    expect((await req("/secrets/missing/reveal", "POST", {})).status).toBe(404);
 
     const updSec = await req(`/secrets/${secretId}`, "PUT", {
       value: "ghp_rotated_value_67890",

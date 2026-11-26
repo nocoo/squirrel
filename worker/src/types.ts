@@ -108,6 +108,7 @@ export interface McpCallerContext {
 export interface AuthTransactionRecord {
   oauthRequest: AuthRequest;
   csrfToken: string;
+  adminEmail: string;
   clientName: string;
   redirectHost: string;
   redirectIsLoopback: boolean;

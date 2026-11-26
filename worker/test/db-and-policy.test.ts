@@ -310,6 +310,17 @@ describe("D1 repository & folder/secret ACL", () => {
       ok: false,
       decision: "expired",
     });
+    expect(
+      evaluateSecretRead(
+        basePolicy,
+        { ...sInFolder, expiresAt: "2026-11-26T07:00:00+08:00" },
+        true,
+        nowIso,
+      ),
+    ).toMatchObject({
+      ok: false,
+      decision: "expired",
+    });
     expect(evaluateSecretRead(basePolicy, sInFolder, true, nowIso)).toEqual({ ok: true });
   });
 });

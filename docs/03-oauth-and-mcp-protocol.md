@@ -8,7 +8,7 @@
 4. **DCR 白名单防护**：`POST /oauth/register` 通过 [dcr-guard.ts](file:///Users/nocoo/workspace/personal/squirrel/worker/src/auth/dcr-guard.ts) 校验 `redirect_uris`，放行 `ALLOWED_REDIRECT_HOSTS`（默认覆盖 `oauth-redirect.googleusercontent.com`、`oauth-redirect-sandbox.googleusercontent.com`、`oauth-redirect-test.googleusercontent.com`、`vertexaisearch.cloud.google.com`、`gemini.google.com`、`localhost`、`127.0.0.1`），非回环地址强制要求 `https:`，并拒绝 `#fragment` 与 userinfo。
 5. **超长 `state` 事务化授权页**：`GET /authorize` 解析请求并将完整 `AuthRequest`（兼容 3000+ 字符 `state`）写入 `OAUTH_KV`（`auth_tx:<txId>`，TTL 300 秒），302 重定向到 `/authorize?tx=<txId>` 由 React SPA 渲染授权同意页；提交批准后回跳原 `redirect_uri` 并完整附带 `state` 与 `iss`。
 6. **无状态 Streamable HTTP**：`POST /mcp` 使用 `@modelcontextprotocol/sdk` 的 `WebStandardStreamableHTTPServerTransport`（`sessionIdGenerator: undefined, enableJsonResponse: true`），支持 `2025-03-26` ~ `2025-11-25`；`GET /mcp` 显式返回 `405 Method Not Allowed`（`Allow: POST`）。
-7. **Token 吊销同步**：支持向 `/oauth/revoke`（或 `/oauth/token` RFC 7009 形态）发起吊销请求，在作废 KV Token/Grant 的同时将 D1 `oauth_client_policies.status` 同步置为 `revoked`。
+7. **Token 吊销（RFC 7009）**：支持向 `/oauth/revoke`（兼容 JSON 与表单体）或 `/oauth/token` 发起吊销请求，由 `OAuthProvider` 校验 Token 归属并立即作废 KV Token/Grant；若需整端吊销（同步清除 D1 访问策略并阻止后续授权），可在管理后台执行 **吊销** 操作。
 
 ## 2. 无头 Bot / Agent Bearer Token
 

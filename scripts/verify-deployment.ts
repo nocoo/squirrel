@@ -9,6 +9,13 @@ const response = await fetch(`${origin}/api/live`, {
 if (response.status !== 200) {
   throw new Error(`Health endpoint returned ${response.status}`);
 }
+if (
+  response.headers.get("x-content-type-options") !== "nosniff" ||
+  response.headers.get("x-frame-options") !== "DENY" ||
+  response.headers.get("referrer-policy") !== "no-referrer"
+) {
+  throw new Error("Missing expected security headers on /api/live");
+}
 const health = (await response.json()) as {
   status?: string;
   version?: string;

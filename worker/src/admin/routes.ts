@@ -115,6 +115,11 @@ function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Error && err.message.toLowerCase().includes("unique");
 }
 
+function normalizeExpiresAt(value: string | null | undefined): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  return new Date(value).toISOString();
+}
+
 export const adminRoutes = new Hono<{
   Bindings: WorkerBindings;
   Variables: { adminEmail: string; adminName?: string | null };
@@ -246,7 +251,7 @@ adminRoutes.post("/secrets", async (c) => {
       ciphertext: encrypted.ciphertext,
       iv: encrypted.iv,
       isEnabled: parsed.data.isEnabled,
-      expiresAt: parsed.data.expiresAt ?? null,
+      expiresAt: normalizeExpiresAt(parsed.data.expiresAt) ?? null,
       now,
     });
     return c.json({ item: created }, 201);
@@ -258,7 +263,7 @@ adminRoutes.post("/secrets", async (c) => {
   }
 });
 
-adminRoutes.get("/secrets/:id/reveal", async (c) => {
+adminRoutes.post("/secrets/:id/reveal", async (c) => {
   const id = c.req.param("id");
   const secret = await getSecretById(c.env.DB, id);
   if (!secret) {
@@ -328,7 +333,7 @@ adminRoutes.put("/secrets/:id", async (c) => {
       ciphertext,
       iv,
       isEnabled: parsed.data.isEnabled,
-      expiresAt: parsed.data.expiresAt,
+      expiresAt: normalizeExpiresAt(parsed.data.expiresAt),
       now: new Date().toISOString(),
     });
     if (!updated) {
@@ -384,7 +389,7 @@ adminRoutes.post("/clients", async (c) => {
       allowedSecretIds: parsed.data.allowAll ? [] : parsed.data.allowedSecretIds,
       allowPlaintextRead: parsed.data.allowPlaintextRead,
       status: "active",
-      expiresAt: parsed.data.expiresAt ?? null,
+      expiresAt: normalizeExpiresAt(parsed.data.expiresAt) ?? null,
       now,
     });
 
@@ -448,7 +453,7 @@ adminRoutes.patch("/clients/:clientId", async (c) => {
     allowedSecretIds: parsed.data.allowAll ? [] : parsed.data.allowedSecretIds,
     allowPlaintextRead: parsed.data.allowPlaintextRead,
     status: parsed.data.status,
-    expiresAt: parsed.data.expiresAt,
+    expiresAt: normalizeExpiresAt(parsed.data.expiresAt),
     now: new Date().toISOString(),
   });
 

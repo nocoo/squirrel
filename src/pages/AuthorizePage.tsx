@@ -72,9 +72,14 @@ export default function AuthorizePage() {
                 <Text className="font-mono text-basalt-sm text-basalt-muted-foreground">
                   Client ID: {tx.clientId}
                 </Text>
-                <LayerCard.Well className="flex items-center justify-between gap-2 px-3 py-2">
-                  <Text className="text-basalt-sm text-basalt-muted-foreground">回调域名</Text>
-                  <Text className="font-mono text-basalt-sm font-medium">{tx.redirectHost}</Text>
+                <LayerCard.Well className="space-y-1 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Text className="text-basalt-sm text-basalt-muted-foreground">回调域名</Text>
+                    <Text className="font-mono text-basalt-sm font-medium">{tx.redirectHost}</Text>
+                  </div>
+                  <Text className="break-all font-mono text-basalt-xs text-basalt-muted-foreground">
+                    {tx.redirectUri}
+                  </Text>
                 </LayerCard.Well>
               </div>
 

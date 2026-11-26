@@ -9,7 +9,7 @@ import { handleAuthorizeGet } from "./auth/authorize";
 import { resolveBotBearerToken } from "./auth/bot-token";
 import { cfAccessMiddleware, enforceOriginMiddleware } from "./auth/cf-access";
 import { dcrClientRegistrationCheck } from "./auth/dcr-guard";
-import { getClientPolicy, purgeExpiredAuditLogs, updateClientPolicy } from "./lib/db";
+import { getClientPolicy, purgeExpiredAuditLogs } from "./lib/db";
 import { getPublicOrigin } from "./lib/env";
 import { handleMcpRequest } from "./mcp/server";
 import type { McpCallerContext, OAuthProps, WorkerBindings } from "./types";
@@ -144,10 +144,29 @@ function getOAuthProvider(origin: string, env: WorkerBindings): OAuthProvider<Wo
   return provider;
 }
 
-function corsHeaders(request: Request): Headers {
+const PRODUCTION_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'";
+
+function withSecurityHeaders(response: Response, env: WorkerBindings): Response {
+  const headers = new Headers(response.headers);
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "DENY");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  headers.set(
+    "Content-Security-Policy",
+    env.ENVIRONMENT === "production" ? PRODUCTION_CSP : "frame-ancestors 'none'",
+  );
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function corsHeaders(): Headers {
   const headers = new Headers();
-  const origin = request.headers.get("Origin");
-  headers.set("Access-Control-Allow-Origin", origin || "*");
+  headers.set("Access-Control-Allow-Origin", "*");
   headers.set("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
   headers.set("Cache-Control", "no-store");
@@ -155,7 +174,7 @@ function corsHeaders(request: Request): Headers {
 }
 
 function handleProtectedResourceMetadataRoot(request: Request, origin: string): Response {
-  const headers = corsHeaders(request);
+  const headers = corsHeaders();
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers });
   }
@@ -172,36 +191,6 @@ function handleProtectedResourceMetadataRoot(request: Request, origin: string): 
     resource_name: "Squirrel MCP",
   });
   return new Response(request.method === "HEAD" ? null : body, { status: 200, headers });
-}
-
-async function extractRevocationClientId(request: Request): Promise<string | null> {
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.toLowerCase().startsWith("basic ")) {
-    try {
-      const decoded = atob(authHeader.slice(6).trim());
-      const colonIdx = decoded.indexOf(":");
-      if (colonIdx > 0) {
-        return decodeURIComponent(decoded.slice(0, colonIdx));
-      }
-    } catch {
-      // Ignore malformed basic header; OAuthProvider will validate.
-    }
-  }
-  try {
-    const contentType = request.headers.get("Content-Type") ?? "";
-    if (contentType.includes("application/x-www-form-urlencoded")) {
-      const form = await request.clone().formData();
-      const clientId = form.get("client_id");
-      const grantType = form.get("grant_type");
-      const token = form.get("token");
-      if (!grantType && token && typeof clientId === "string" && clientId) {
-        return clientId;
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
 }
 
 async function handleRevokeAlias(
@@ -239,15 +228,7 @@ async function handleRevokeAlias(
     targetReq = new Request(targetUrl.toString(), request);
   }
 
-  const clientId = await extractRevocationClientId(targetReq);
-  const response = await provider.fetch(targetReq, env, ctx);
-  if (response.ok && clientId) {
-    await updateClientPolicy(env.DB, clientId, {
-      status: "revoked",
-      now: new Date().toISOString(),
-    }).catch(() => undefined);
-  }
-  return response;
+  return provider.fetch(targetReq, env, ctx);
 }
 
 export default {
@@ -257,28 +238,16 @@ export default {
 
     // Serve both /.well-known/oauth-protected-resource and .../mcp for RFC 9728 compatibility.
     if (url.pathname === "/.well-known/oauth-protected-resource") {
-      return handleProtectedResourceMetadataRoot(request, origin);
+      return withSecurityHeaders(handleProtectedResourceMetadataRoot(request, origin), env);
     }
 
     const provider = getOAuthProvider(origin, env);
 
     if (url.pathname === "/oauth/revoke" && request.method === "POST") {
-      return handleRevokeAlias(request, provider, env, ctx);
+      return withSecurityHeaders(await handleRevokeAlias(request, provider, env, ctx), env);
     }
 
-    if (url.pathname === "/oauth/token" && request.method === "POST") {
-      const revokedClientId = await extractRevocationClientId(request);
-      const res = await provider.fetch(request, env, ctx);
-      if (res.ok && revokedClientId) {
-        await updateClientPolicy(env.DB, revokedClientId, {
-          status: "revoked",
-          now: new Date().toISOString(),
-        }).catch(() => undefined);
-      }
-      return res;
-    }
-
-    return provider.fetch(request, env, ctx);
+    return withSecurityHeaders(await provider.fetch(request, env, ctx), env);
   },
 
   async scheduled(

@@ -123,6 +123,10 @@ export const api = {
   revealSecret: (id: string) =>
     requestJson<{ id: string; slug: string; value: string }>(
       `/api/admin/secrets/${encodeURIComponent(id)}/reveal`,
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
     ),
 
   deleteSecret: (id: string) =>

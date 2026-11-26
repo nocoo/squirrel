@@ -38,6 +38,7 @@ export async function handleAuthorizeGet(
     const record: AuthTransactionRecord = {
       oauthRequest,
       csrfToken,
+      adminEmail: c.get("adminEmail"),
       clientName: clientInfo?.clientName || oauthRequest.clientId,
       redirectHost: redirectParsed.host || oauthRequest.redirectUri,
       redirectIsLoopback,
@@ -72,6 +73,9 @@ export async function handleGetAuthTx(
   });
   if (!record) {
     return c.json({ error: "授权会话已过期或不存在，请重新从客户端发起授权。" }, 404);
+  }
+  if (record.adminEmail !== c.get("adminEmail")) {
+    return c.json({ error: "Authorization transaction does not belong to current user" }, 403);
   }
 
   const [existingPolicy, folders, secrets] = await Promise.all([
@@ -143,6 +147,9 @@ export async function handleAuthTxDecision(
   const record = await c.env.OAUTH_KV.get<AuthTransactionRecord>(key, { type: "json" });
   if (!record) {
     return c.json({ error: "授权会话已过期或已被使用，请重新发起授权。" }, 404);
+  }
+  if (record.adminEmail !== c.get("adminEmail")) {
+    return c.json({ error: "Authorization transaction does not belong to current user" }, 403);
   }
 
   if (parsed.data.csrfToken !== record.csrfToken) {

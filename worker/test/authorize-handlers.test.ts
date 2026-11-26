@@ -60,7 +60,7 @@ describe("authorize handlers L2", () => {
 
     const app = new Hono<{ Bindings: WorkerBindings; Variables: { adminEmail: string } }>();
     app.use("*", async (c, next) => {
-      c.set("adminEmail", "admin@test.local");
+      c.set("adminEmail", c.req.header("x-test-admin") ?? "admin@test.local");
       return next();
     });
     app.get("/authorize", handleAuthorizeGet);
@@ -94,6 +94,33 @@ describe("authorize handlers L2", () => {
     expect(detailRes.status).toBe(200);
     const detail = (await detailRes.json()) as { csrfToken: string; clientName: string };
     expect(detail.clientName).toBe("Gemini App");
+
+    // Different administrator cannot read or decide another admin's tx
+    expect(
+      (
+        await app.fetch(
+          new Request(`https://squirrel.test/api/admin/oauth/tx/${txId}`, {
+            headers: { "x-test-admin": "other@test.local" },
+          }),
+          h.env,
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      (
+        await app.fetch(
+          new Request(`https://squirrel.test/api/admin/oauth/tx/${txId}/decision`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-test-admin": "other@test.local",
+            },
+            body: JSON.stringify({ decision: "deny", csrfToken: detail.csrfToken }),
+          }),
+          h.env,
+        )
+      ).status,
+    ).toBe(403);
 
     // Missing tx returns 404
     expect(
