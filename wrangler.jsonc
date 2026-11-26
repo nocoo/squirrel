@@ -1,0 +1,102 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "squirrel-web",
+  "account_id": "d51a8fde361e4be31db17d8c56737c1f",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "squirrel.hexly.ai",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true,
+    "directory": "./dist/client"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "PUBLIC_ORIGIN": "https://squirrel.hexly.ai",
+    "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+    "LOCAL_USER_EMAIL": "",
+    "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "squirrel-db",
+      "database_id": "47120ece-5886-42a6-9382-72b3d907fcda",
+      "migrations_dir": "worker/migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "574ee7f1a325425d82da165712ea7427"
+    }
+  ],
+  "env": {
+    "local": {
+      "name": "squirrel-local",
+      "routes": [],
+      "vars": {
+        "ENVIRONMENT": "local",
+        "PUBLIC_ORIGIN": "https://squirrel.dev.hexly.ai",
+        "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+        "LOCAL_USER_EMAIL": "developer@example.test",
+        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "squirrel-local",
+          "database_id": "local-squirrel",
+          "migrations_dir": "worker/migrations"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "OAUTH_KV",
+          "id": "local-squirrel-oauth"
+        }
+      ]
+    },
+    "test": {
+      "name": "squirrel-test",
+      "routes": [],
+      "vars": {
+        "ENVIRONMENT": "test",
+        "PUBLIC_ORIGIN": "http://127.0.0.1:27067",
+        "CF_ACCESS_TEAM_DOMAIN": "nocoo",
+        "LOCAL_USER_EMAIL": "test@example.test",
+        "ALLOWED_REDIRECT_HOSTS": "oauth-redirect.googleusercontent.com,localhost,127.0.0.1"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "squirrel-test",
+          "database_id": "test-squirrel",
+          "migrations_dir": "worker/migrations"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "OAUTH_KV",
+          "id": "test-squirrel-oauth"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,190 @@
+import { Badge, Button, LayerCard, TablePager, Text } from "@nocoo/basalt";
+import { Banner } from "@nocoo/basalt/components/banner";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nocoo/basalt/components/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@nocoo/basalt/components/table";
+import { Info, RefreshCw } from "@nocoo/basalt/icons";
+import { formatDateTime, getAuditDecisionMeta } from "@/models/format";
+import { useAuditLogsViewModel } from "@/viewmodels/useAuditLogsViewModel";
+
+export default function AuditLogsPage() {
+  const {
+    logs,
+    total,
+    page,
+    pageSize,
+    setPage,
+    clients,
+    clientFilter,
+    setClientFilter,
+    decisionFilter,
+    setDecisionFilter,
+    toolFilter,
+    setToolFilter,
+    loading,
+    error,
+    reload,
+  } = useAuditLogsViewModel();
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="审计日志"
+        description="追踪每一次 MCP 工具调用、AI 声明原因、权限决策与管理员明文查看"
+        actions={
+          <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+            <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+            刷新
+          </Button>
+        }
+        filters={
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={clientFilter} onValueChange={setClientFilter}>
+              <SelectTrigger size="sm" className="w-48" aria-label="按消费方筛选">
+                <SelectValue placeholder="全部消费方" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部消费方</SelectItem>
+                <SelectItem value="admin">管理员后台</SelectItem>
+                {clients.map((c) => (
+                  <SelectItem key={c.clientId} value={c.clientId}>
+                    {c.displayName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={toolFilter} onValueChange={setToolFilter}>
+              <SelectTrigger size="sm" className="w-40" aria-label="按工具筛选">
+                <SelectValue placeholder="全部操作" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部操作</SelectItem>
+                <SelectItem value="get_secret">get_secret</SelectItem>
+                <SelectItem value="list_secrets">list_secrets</SelectItem>
+                <SelectItem value="search_secrets">search_secrets</SelectItem>
+                <SelectItem value="whoami">whoami</SelectItem>
+                <SelectItem value="admin_reveal">admin_reveal</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={decisionFilter} onValueChange={setDecisionFilter}>
+              <SelectTrigger size="sm" className="w-36" aria-label="按决策筛选">
+                <SelectValue placeholder="全部结果" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部结果</SelectItem>
+                <SelectItem value="allowed">放行</SelectItem>
+                <SelectItem value="denied">拒绝</SelectItem>
+                <SelectItem value="expired">已过期</SelectItem>
+                <SelectItem value="disabled">已停用</SelectItem>
+                <SelectItem value="not_found">未找到</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
+
+      <Banner
+        tone="info"
+        size="sm"
+        icon={<Info className="h-4 w-4" strokeWidth={1.5} />}
+        title="90 天自动清理策略"
+        description="系统每日凌晨 03:00 (UTC) 通过 Cloudflare Cron Trigger 自动清除超过 90 天的历史审计日志。"
+      />
+
+      {error && (
+        <LayerCard outlined>
+          <LayerCard.Body className="flex items-center justify-between gap-4">
+            <Text className="text-basalt-base text-basalt-destructive">{error}</Text>
+            <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+              重试
+            </Button>
+          </LayerCard.Body>
+        </LayerCard>
+      )}
+
+      <LayerCard padding="none">
+        <LayerCard.Body className="p-0">
+          {loading && logs.length === 0 ? (
+            <div className="p-6">
+              <LayerCard.Loading label="加载审计日志..." />
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="p-6">
+              <LayerCard.Empty
+                title="暂无审计日志"
+                description="还没有匹配当前筛选条件的调用记录"
+              />
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>时间</TableHead>
+                    <TableHead>消费方</TableHead>
+                    <TableHead>工具 / 操作</TableHead>
+                    <TableHead>目标密钥</TableHead>
+                    <TableHead>取用原因</TableHead>
+                    <TableHead>决策</TableHead>
+                    <TableHead className="text-right">耗时</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((row) => {
+                    const decision = getAuditDecisionMeta(row.decision);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="whitespace-nowrap font-mono text-basalt-sm text-basalt-muted-foreground">
+                          {formatDateTime(row.createdAt)}
+                        </TableCell>
+                        <TableCell className="font-medium">{row.clientName}</TableCell>
+                        <TableCell className="font-mono text-basalt-sm">{row.toolName}</TableCell>
+                        <TableCell className="font-mono text-basalt-sm">
+                          {row.secretSlug ?? row.secretId ?? "—"}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate text-basalt-md">
+                          {row.reason ?? "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge tone={decision.tone} variant="soft">
+                            {decision.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-basalt-sm tabular-nums text-basalt-muted-foreground">
+                          {row.latencyMs !== null ? `${row.latencyMs}ms` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <div className="border-t border-basalt-border p-3">
+                <TablePager
+                  page={page}
+                  pageSize={pageSize}
+                  totalCount={total}
+                  onPageChange={setPage}
+                />
+              </div>
+            </>
+          )}
+        </LayerCard.Body>
+      </LayerCard>
+    </div>
+  );
+}

@@ -1,0 +1,13 @@
+@import "@nocoo/basalt/styles";
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-basalt-background text-basalt-foreground font-basalt-sans;
+  }
+}
+
+/* Basalt 3.6.0 SidebarDrawer renders SheetContent with default showCloseButton=true, overlapping custom SidebarToggle dismiss control. */
+[data-slot="sidebar-drawer"] > [data-slot="sheet-close"] {
+  display: none;
+}

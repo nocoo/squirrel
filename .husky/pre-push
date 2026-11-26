@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+if [ -z "$BASH_VERSION" ]; then
+  exec bash "$0" "$@"
+fi
+set -o pipefail
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$HOOK_DIR/../scripts/ensure-tools.sh"
+require_tool osv-scanner "dependency vulnerability scanning"
+
+TMPDIR_HOOK=$(mktemp -d -t squirrel-prepush-XXXXXX)
+trap 'rm -rf "$TMPDIR_HOOK"' EXIT
+
+run_bg() {
+  local name="$1"; shift
+  ( "$@" >"$TMPDIR_HOOK/$name.log" 2>&1; echo $? >"$TMPDIR_HOOK/$name.exit" ) &
+  eval "PID_$name=$!"
+}
+
+wait_stage() {
+  local name="$1" pid_var="PID_$1" pid status
+  pid=${!pid_var}
+  wait "$pid" 2>/dev/null || true
+  status=$(cat "$TMPDIR_HOOK/$name.exit" 2>/dev/null || echo 1)
+  echo "━━━ $name (exit=$status) ━━━"
+  cat "$TMPDIR_HOOK/$name.log"
+  if [ "$status" -ne 0 ]; then
+    echo "❌ pre-push stage '$name' failed" >&2
+    exit "$status"
+  fi
+}
+
+run_bg build            bun run build
+run_bg unit_cov         bun run test:unit:coverage
+run_bg api_test         bun run test:api
+run_bg worker_test      bun run test:worker
+run_bg worker_tc        bun run typecheck:worker
+run_bg lint             bun run lint
+run_bg osv_root         osv-scanner scan --lockfile=bun.lock --config=osv-scanner.toml
+
+wait_stage build
+wait_stage unit_cov
+wait_stage api_test
+wait_stage worker_test
+wait_stage worker_tc
+wait_stage lint
+wait_stage osv_root
