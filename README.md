@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/brand/icon-rounded.png" alt="Squirrel" width="128" height="128" />
+</p>
+
 # Squirrel（松鼠）
 
 部署在 **Cloudflare Workers** 上的个人级 API Key / Token 托管服务，通过标准 **MCP（Streamable HTTP）+ OAuth 2.1 + 无头 Bot Bearer Token** 向 Gemini、Claude Code、Cursor 及自动化 Agent 按需分发低敏凭证。

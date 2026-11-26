@@ -165,7 +165,7 @@ function SquirrelSidebarBody({
     <>
       <SidebarHeader>
         <SidebarBrand
-          logo={<img src="/logo.svg" alt="" width={24} height={24} />}
+          logo={<img src="/logo-48.png" alt="" width={24} height={24} />}
           name="Squirrel"
           version={`v${APP_VERSION}`}
           action={

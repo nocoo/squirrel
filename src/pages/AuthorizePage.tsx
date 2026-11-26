@@ -46,7 +46,7 @@ export default function AuthorizePage() {
     <div className="min-h-screen bg-basalt-background px-4 py-10 text-basalt-foreground">
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="flex items-center gap-3">
-          <img src="/logo.svg" alt="Squirrel" width={36} height={36} />
+          <img src="/logo-80.png" alt="Squirrel" width={36} height={36} />
           <div>
             <h1 className="text-basalt-2xl font-semibold tracking-tight">Squirrel 授权确认</h1>
             <Text className="text-basalt-sm text-basalt-muted-foreground">
