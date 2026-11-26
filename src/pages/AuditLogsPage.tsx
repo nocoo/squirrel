@@ -196,7 +196,7 @@ export default function AuditLogsPage() {
       <LayerCard padding="none">
         <LayerCard.Body className="p-0">
           {loading && logs.length === 0 ? (
-            <div role="status" aria-label="加载审计日志...">
+            <div role="status" aria-label="加载审计日志..." className="w-full overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -246,53 +246,69 @@ export default function AuditLogsPage() {
             />
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>时间</TableHead>
-                    <TableHead>消费方</TableHead>
-                    <TableHead>工具 / 操作</TableHead>
-                    <TableHead>目标密钥</TableHead>
-                    <TableHead>取用原因</TableHead>
-                    <TableHead>决策</TableHead>
-                    <TableHead className="text-right">耗时</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {logs.map((row) => {
-                    const decision = getAuditDecisionMeta(row.decision);
-                    return (
-                      <TableRow key={row.id}>
-                        <TableCell className="whitespace-nowrap font-mono text-basalt-sm text-basalt-muted-foreground">
-                          {formatDateTime(row.createdAt)}
-                        </TableCell>
-                        <TableCell className="font-medium">{row.clientName}</TableCell>
-                        <TableCell className="font-mono text-basalt-sm">{row.toolName}</TableCell>
-                        <TableCell className="font-mono text-basalt-sm">
-                          {row.secretSlug ?? row.secretId ?? "—"}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate text-basalt-md">
-                          {row.reason ?? "—"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge tone={decision.tone} variant="soft">
-                            {decision.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-basalt-sm tabular-nums text-basalt-muted-foreground">
-                          {row.latencyMs !== null ? `${row.latencyMs}ms` : "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="w-full overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>时间</TableHead>
+                      <TableHead>消费方</TableHead>
+                      <TableHead>工具 / 操作</TableHead>
+                      <TableHead>目标密钥</TableHead>
+                      <TableHead>取用原因</TableHead>
+                      <TableHead>决策</TableHead>
+                      <TableHead textAlign="end">耗时</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.map((row) => {
+                      const decision = getAuditDecisionMeta(row.decision);
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell className="whitespace-nowrap font-mono text-basalt-sm text-basalt-muted-foreground">
+                            {formatDateTime(row.createdAt)}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap font-medium">
+                            {row.clientName}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap font-mono text-basalt-sm">
+                            {row.toolName}
+                          </TableCell>
+                          <TableCell className="max-w-52 truncate font-mono text-basalt-sm">
+                            {row.secretSlug ?? row.secretId ?? "—"}
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate text-basalt-md">
+                            {row.reason ?? "—"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              tone={decision.tone}
+                              variant="soft"
+                              className="whitespace-nowrap"
+                            >
+                              {decision.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell
+                            textAlign="end"
+                            className="whitespace-nowrap font-mono text-basalt-sm tabular-nums text-basalt-muted-foreground"
+                          >
+                            {row.latencyMs !== null ? `${row.latencyMs}ms` : "—"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
               <div className="border-t border-basalt-border p-basalt-card-sm">
                 <TablePager
                   page={page}
                   pageSize={pageSize}
                   totalCount={total}
                   onPageChange={setPage}
+                  formatRange={({ start, end, totalCount }) =>
+                    totalCount === 0 ? "暂无记录" : `第 ${start}–${end} 条，共 ${totalCount} 条`
+                  }
                 />
               </div>
             </>

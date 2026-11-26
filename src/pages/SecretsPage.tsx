@@ -68,7 +68,7 @@ import {
   Trash2,
   X,
 } from "@nocoo/basalt/icons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
 import { FormSelect } from "@/components/FormSelect";
@@ -190,6 +190,11 @@ export default function SecretsPage() {
   const [secretError, setSecretError] = useState<string | null>(null);
   const [secretFieldErrors, setSecretFieldErrors] = useState<SecretFieldErrors>({});
   const [deletingSecret, setDeletingSecret] = useState<SecretItem | null>(null);
+
+  const folderColorById = useMemo(
+    () => new Map(folders.map((f) => [f.id, resolveFolderTagColor(f.color)])),
+    [folders],
+  );
 
   const selectedFolderLabel =
     selectedFolder === "__uncategorized__"
@@ -429,7 +434,7 @@ export default function SecretsPage() {
         <div className="grid min-w-0 lg:grid-cols-[15rem_minmax(0,1fr)]">
           <aside
             aria-label="文件夹筛选"
-            className="border-b border-basalt-border p-basalt-card-sm lg:border-r lg:border-b-0"
+            className="min-w-0 border-b border-basalt-border p-basalt-card-sm lg:border-r lg:border-b-0"
           >
             <div className="mb-basalt-space-lg px-basalt-space-lg">
               <h2 className="text-basalt-sm font-medium text-basalt-muted-foreground">文件夹</h2>
@@ -532,7 +537,7 @@ export default function SecretsPage() {
 
           <div className="min-w-0">
             {loading && secrets.length === 0 ? (
-              <div role="status" aria-label="加载密钥列表...">
+              <div role="status" aria-label="加载密钥列表..." className="w-full overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -606,153 +611,169 @@ export default function SecretsPage() {
                 />
               )
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "name")}>
-                      <TableSortableHeader
-                        sorted={sortKey === "name" ? sortDir : undefined}
-                        onClick={() => toggleSort("name")}
-                      >
-                        名称 / Slug
-                      </TableSortableHeader>
-                    </TableHead>
-                    <TableHead>文件夹</TableHead>
-                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "service")}>
-                      <TableSortableHeader
-                        sorted={sortKey === "service" ? sortDir : undefined}
-                        onClick={() => toggleSort("service")}
-                      >
-                        服务
-                      </TableSortableHeader>
-                    </TableHead>
-                    <TableHead>掩码预览</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "lastUsedAt")}>
-                      <TableSortableHeader
-                        sorted={sortKey === "lastUsedAt" ? sortDir : undefined}
-                        onClick={() => toggleSort("lastUsedAt")}
-                      >
-                        最近读取
-                      </TableSortableHeader>
-                    </TableHead>
-                    <TableHead
-                      textAlign="end"
-                      aria-sort={ariaSortFor(sortKey, sortDir, "useCount")}
-                    >
-                      <TableSortableHeader
-                        textAlign="end"
-                        sorted={sortKey === "useCount" ? sortDir : undefined}
-                        onClick={() => toggleSort("useCount")}
-                      >
-                        调用次数
-                      </TableSortableHeader>
-                    </TableHead>
-                    <TableHead textAlign="end">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSecrets.map((item) => {
-                    const expiry = getExpiryBadge(item.expiresAt);
-                    return (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div className="max-w-52 truncate font-medium">{item.name}</div>
-                          <div className="max-w-52 truncate font-mono text-basalt-sm text-basalt-muted-foreground">
-                            {item.slug}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {item.folderName ? (
-                            <TagBadge
-                              name={item.folderName}
-                              colorKey={item.folderId ?? item.folderName}
-                              size="sm"
-                            />
-                          ) : (
-                            <Text className="text-basalt-sm text-basalt-muted-foreground">
-                              未分类
-                            </Text>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-mono text-basalt-sm">{item.service}</TableCell>
-                        <TableCell className="font-mono text-basalt-sm text-basalt-muted-foreground">
-                          {item.maskedPreview}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap items-center gap-basalt-space-md">
-                            <Badge tone={item.isEnabled ? "success" : "neutral"} variant="soft">
-                              {item.isEnabled ? "启用" : "停用"}
-                            </Badge>
-                            {expiry && (
-                              <Badge tone={expiry.tone} variant="outline">
-                                {expiry.label}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-basalt-sm text-basalt-muted-foreground tabular-nums">
-                          {formatDateTime(item.lastUsedAt)}
-                        </TableCell>
-                        <TableCell
-                          textAlign="end"
-                          className="font-mono text-basalt-sm tabular-nums"
+              <div className="w-full overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "name")}>
+                        <TableSortableHeader
+                          sorted={sortKey === "name" ? sortDir : undefined}
+                          onClick={() => toggleSort("name")}
                         >
-                          {item.useCount}
-                        </TableCell>
-                        <TableCell textAlign="end">
-                          <div className="flex items-center justify-end gap-basalt-space-sm">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label={`查看明文 ${item.name}`}
-                                  onClick={() => void handleReveal(item)}
+                          名称 / Slug
+                        </TableSortableHeader>
+                      </TableHead>
+                      <TableHead>文件夹</TableHead>
+                      <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "service")}>
+                        <TableSortableHeader
+                          sorted={sortKey === "service" ? sortDir : undefined}
+                          onClick={() => toggleSort("service")}
+                        >
+                          服务
+                        </TableSortableHeader>
+                      </TableHead>
+                      <TableHead>掩码预览</TableHead>
+                      <TableHead>状态</TableHead>
+                      <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "lastUsedAt")}>
+                        <TableSortableHeader
+                          sorted={sortKey === "lastUsedAt" ? sortDir : undefined}
+                          onClick={() => toggleSort("lastUsedAt")}
+                        >
+                          最近读取
+                        </TableSortableHeader>
+                      </TableHead>
+                      <TableHead
+                        textAlign="end"
+                        aria-sort={ariaSortFor(sortKey, sortDir, "useCount")}
+                      >
+                        <TableSortableHeader
+                          textAlign="end"
+                          sorted={sortKey === "useCount" ? sortDir : undefined}
+                          onClick={() => toggleSort("useCount")}
+                        >
+                          调用次数
+                        </TableSortableHeader>
+                      </TableHead>
+                      <TableHead textAlign="end">操作</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSecrets.map((item) => {
+                      const expiry = getExpiryBadge(item.expiresAt);
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div className="max-w-44 truncate font-medium">{item.name}</div>
+                            <div className="max-w-44 truncate font-mono text-basalt-sm text-basalt-muted-foreground">
+                              {item.slug}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {item.folderName ? (
+                              <TagBadge
+                                name={item.folderName}
+                                color={
+                                  item.folderId ? folderColorById.get(item.folderId) : undefined
+                                }
+                                colorKey={item.folderId ?? item.folderName}
+                                size="sm"
+                                className="whitespace-nowrap"
+                              />
+                            ) : (
+                              <Text className="whitespace-nowrap text-basalt-sm text-basalt-muted-foreground">
+                                未分类
+                              </Text>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap font-mono text-basalt-sm">
+                            {item.service}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap font-mono text-basalt-sm text-basalt-muted-foreground">
+                            {item.maskedPreview}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-nowrap items-center gap-basalt-space-md">
+                              <Badge
+                                tone={item.isEnabled ? "success" : "neutral"}
+                                variant="soft"
+                                className="whitespace-nowrap"
+                              >
+                                {item.isEnabled ? "启用" : "停用"}
+                              </Badge>
+                              {expiry && (
+                                <Badge
+                                  tone={expiry.tone}
+                                  variant="outline"
+                                  className="whitespace-nowrap"
                                 >
-                                  <Eye className="size-basalt-icon-lg" strokeWidth={1.5} />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>查看明文</TooltipContent>
-                            </Tooltip>
+                                  {expiry.label}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-basalt-sm text-basalt-muted-foreground tabular-nums">
+                            {formatDateTime(item.lastUsedAt)}
+                          </TableCell>
+                          <TableCell
+                            textAlign="end"
+                            className="whitespace-nowrap font-mono text-basalt-sm tabular-nums"
+                          >
+                            {item.useCount}
+                          </TableCell>
+                          <TableCell textAlign="end" className="whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-basalt-space-sm">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={`查看明文 ${item.name}`}
+                                    onClick={() => void handleReveal(item)}
+                                  >
+                                    <Eye className="size-basalt-icon-lg" strokeWidth={1.5} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>查看明文</TooltipContent>
+                              </Tooltip>
 
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label={`更多操作 ${item.name}`}
-                                >
-                                  <MoreHorizontal
-                                    className="size-basalt-icon-lg"
-                                    strokeWidth={1.5}
-                                  />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => openEditSecret(item)}>
-                                  <Pencil className="size-basalt-icon" strokeWidth={1.5} />
-                                  编辑密钥
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onSelect={() => setDeletingSecret(item)}
-                                >
-                                  <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
-                                  删除密钥
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    aria-label={`更多操作 ${item.name}`}
+                                  >
+                                    <MoreHorizontal
+                                      className="size-basalt-icon-lg"
+                                      strokeWidth={1.5}
+                                    />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={() => openEditSecret(item)}>
+                                    <Pencil className="size-basalt-icon" strokeWidth={1.5} />
+                                    编辑密钥
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    variant="destructive"
+                                    onSelect={() => setDeletingSecret(item)}
+                                  >
+                                    <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
+                                    删除密钥
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </div>
@@ -1002,7 +1023,7 @@ export default function SecretsPage() {
               <ClipboardText
                 text={revealed.value}
                 copyLabel="复制密钥明文"
-                className="flex w-full"
+                className="flex w-full [&>code]:flex-1"
               />
             </DialogBody>
           )}

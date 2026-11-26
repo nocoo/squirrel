@@ -291,7 +291,7 @@ export default function DashboardPage() {
                       </Text>
                     </div>
                     <div className="flex shrink-0 items-center gap-basalt-space-lg">
-                      <Badge tone="info" variant="soft" className="tabular-nums">
+                      <Badge tone="info" variant="soft" className="whitespace-nowrap tabular-nums">
                         {item.useCount} 次
                       </Badge>
                     </div>
@@ -311,12 +311,16 @@ export default function DashboardPage() {
             {(expiringCount > 0 || staleCount > 0) && (
               <div className="flex shrink-0 items-center gap-basalt-space-sm">
                 {expiringCount > 0 && (
-                  <Badge tone="warning" variant="soft" className="tabular-nums">
+                  <Badge tone="warning" variant="soft" className="whitespace-nowrap tabular-nums">
                     临期 {expiringCount}
                   </Badge>
                 )}
                 {staleCount > 0 && (
-                  <Badge tone="neutral" variant="outline" className="tabular-nums">
+                  <Badge
+                    tone="neutral"
+                    variant="outline"
+                    className="whitespace-nowrap tabular-nums"
+                  >
                     僵尸 {staleCount}
                   </Badge>
                 )}
@@ -345,7 +349,7 @@ export default function DashboardPage() {
                         {item.slug}
                       </Text>
                     </div>
-                    <Badge tone="warning" variant="soft">
+                    <Badge tone="warning" variant="soft" className="shrink-0 whitespace-nowrap">
                       过期：{item.expiresAt.slice(0, 10)}
                     </Badge>
                   </LayerCard.Well>
@@ -361,7 +365,7 @@ export default function DashboardPage() {
                         最近读取：{formatDateTime(item.lastUsedAt)}
                       </Text>
                     </div>
-                    <Badge tone="neutral" variant="outline">
+                    <Badge tone="neutral" variant="outline" className="shrink-0 whitespace-nowrap">
                       超过 90 天未用
                     </Badge>
                   </LayerCard.Well>

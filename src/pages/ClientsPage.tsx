@@ -633,7 +633,7 @@ export default function ClientsPage() {
                   <ClipboardText
                     text={issuedCredential.token}
                     copyLabel="复制 Bot Token"
-                    className="flex w-full"
+                    className="flex w-full [&>code]:flex-1"
                   />
                 </div>
               ) : (
@@ -643,7 +643,7 @@ export default function ClientsPage() {
                     <ClipboardText
                       text={issuedCredential.clientId}
                       copyLabel="复制 Client ID"
-                      className="flex w-full"
+                      className="flex w-full [&>code]:flex-1"
                     />
                   </div>
                   {issuedCredential.clientSecret && (
@@ -652,7 +652,7 @@ export default function ClientsPage() {
                       <ClipboardText
                         text={issuedCredential.clientSecret}
                         copyLabel="复制 Client Secret"
-                        className="flex w-full"
+                        className="flex w-full [&>code]:flex-1"
                       />
                     </div>
                   )}
