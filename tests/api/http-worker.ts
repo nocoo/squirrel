@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,9 @@ const migrationSql = readFileSync(
   "utf8",
 );
 const workerEntry = fileURLToPath(new URL("../../worker/src/index.ts", import.meta.url));
+const prebuiltWorkerPath = fileURLToPath(
+  new URL("../../dist/squirrel_web/index.js", import.meta.url),
+);
 const MARKER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const serveAssetsStub = async () =>
@@ -65,6 +68,14 @@ export function accessJwtKit() {
 }
 
 async function bundleWorker(): Promise<string> {
+  if (process.env.SQUIRREL_PREBUILT_WORKER === "1") {
+    if (!existsSync(prebuiltWorkerPath)) {
+      throw new Error(
+        `SQUIRREL_PREBUILT_WORKER=1 requires prebuilt worker at ${prebuiltWorkerPath} (run bun run build first)`,
+      );
+    }
+    return readFileSync(prebuiltWorkerPath, "utf8");
+  }
   bundledScript ??= esbuild
     .build({
       entryPoints: [workerEntry],

@@ -21,6 +21,7 @@ jobs:
   s1-types:
     name: "S1: Types"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -42,6 +43,7 @@ jobs:
   s2-lint:
     name: "S2: Lint"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -63,6 +65,7 @@ jobs:
   s3-workflow:
     name: "S3: Workflow"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -78,6 +81,7 @@ jobs:
   g1-secrets:
     name: "G1: Secrets"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -94,6 +98,7 @@ jobs:
   g2-dependencies:
     name: "G2: Dependencies"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -111,6 +116,7 @@ jobs:
   b1-build:
     name: "B1: Build"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -141,6 +147,7 @@ jobs:
   l1-unit:
     name: "L1: Unit"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -162,6 +169,7 @@ jobs:
   l2-runtime:
     name: "L2: Runtime"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -184,6 +192,7 @@ jobs:
     name: "L3: Integration"
     needs: [b1-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -199,7 +208,9 @@ jobs:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: b1-build
-      - run: bun run test:api
+      - env:
+          SQUIRREL_PREBUILT_WORKER: "1"
+        run: bun run test:api
       - name: Record SHA
         id: record-sha
         if: always()
@@ -209,6 +220,7 @@ jobs:
     name: "L4: E2E"
     needs: [b1-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -228,7 +240,9 @@ jobs:
         with:
           package-manager: bun
           browsers: chromium
-      - run: bun run test:e2e:bdd
+      - env:
+          SQUIRREL_PREBUILT_E2E: "1"
+        run: bun run test:e2e:bdd
       - name: Record SHA
         id: record-sha
         if: always()
@@ -238,6 +252,7 @@ jobs:
     name: "P1: Package"
     needs: [b1-build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tested-sha: ${{ steps.record-sha.outputs.sha }}
     steps:
@@ -262,6 +277,7 @@ jobs:
   z1-gate:
     name: "Z1: Gate"
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     needs:
       - s1-types
