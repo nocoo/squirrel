@@ -376,7 +376,7 @@ export default function ClientsPage() {
         open={createForm.open}
         onOpenChange={(open) => setCreateForm((prev) => ({ ...prev, open }))}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent size="xl">
           <DialogHeader>
             <DialogTitle>
               {createForm.type === "bot_token" ? "新建无头 Bot Token" : "新建静态 OAuth 客户端"}
@@ -499,7 +499,7 @@ export default function ClientsPage() {
 
       {/* Edit Policy Dialog */}
       <Dialog open={editForm !== null} onOpenChange={(open) => !open && setEditForm(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent size="xl">
           <DialogHeader>
             <DialogTitle>编辑授权策略：{editForm?.client.displayName}</DialogTitle>
             <DialogDescription>
@@ -560,7 +560,7 @@ export default function ClientsPage() {
         open={issuedCredential !== null}
         onOpenChange={(open) => !open && clearIssuedCredential()}
       >
-        <DialogContent>
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>凭证已签发：{issuedCredential?.displayName}</DialogTitle>
             <DialogDescription>

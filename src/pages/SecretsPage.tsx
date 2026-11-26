@@ -618,7 +618,7 @@ export default function SecretsPage() {
 
       {/* Secret Create / Edit Dialog */}
       <Dialog open={secretDialogOpen} onOpenChange={setSecretDialogOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>{secretForm.editingId ? "编辑密钥" : "新增密钥"}</DialogTitle>
             <DialogDescription>
@@ -780,7 +780,7 @@ export default function SecretsPage() {
 
       {/* Reveal Secret Plaintext Dialog */}
       <Dialog open={revealed !== null} onOpenChange={(open) => !open && clearRevealed()}>
-        <DialogContent>
+        <DialogContent size="lg">
           <DialogHeader>
             <DialogTitle>明文密钥：{revealed?.name}</DialogTitle>
             <DialogDescription>
