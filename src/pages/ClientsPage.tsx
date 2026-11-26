@@ -15,22 +15,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
   Input,
   Label,
   LayerCard,
-  Text,
   Textarea,
   toast,
 } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@nocoo/basalt/components/select";
 import {
   Ban,
   Bot,
@@ -44,6 +37,8 @@ import {
 } from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { FormSelect } from "@/components/FormSelect";
 import { ScopeSelector } from "@/components/ScopeSelector";
 import {
   formatDateTime,
@@ -52,7 +47,7 @@ import {
   summarizeClientScope,
 } from "@/models/format";
 import type { ClientPolicyItem } from "@/models/types";
-import { validateClientForm } from "@/models/validators";
+import { type ClientFieldErrors, validateClientFields } from "@/models/validators";
 import { useClientsViewModel } from "@/viewmodels/useClientsViewModel";
 
 interface CreateClientForm {
@@ -80,6 +75,12 @@ const INITIAL_CREATE_FORM: CreateClientForm = {
   allowPlaintextRead: true,
   expiresAtDate: "",
 };
+
+const AUTH_METHOD_OPTIONS = [
+  { value: "client_secret_post", label: "client_secret_post" },
+  { value: "client_secret_basic", label: "client_secret_basic" },
+  { value: "none", label: "none（公开客户端）" },
+] as const;
 
 interface EditPolicyForm {
   client: ClientPolicyItem;
@@ -111,9 +112,12 @@ export default function ClientsPage() {
   const [createForm, setCreateForm] = useState<CreateClientForm>(INITIAL_CREATE_FORM);
   const [createSaving, setCreateSaving] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createFieldErrors, setCreateFieldErrors] = useState<ClientFieldErrors>({});
 
   const [editForm, setEditForm] = useState<EditPolicyForm | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editFieldErrors, setEditFieldErrors] = useState<{ displayName?: string }>({});
 
   const [revokingClient, setRevokingClient] = useState<ClientPolicyItem | null>(null);
   const [deletingClient, setDeletingClient] = useState<ClientPolicyItem | null>(null);
@@ -121,6 +125,7 @@ export default function ClientsPage() {
   const openCreate = (type: "bot_token" | "static_oauth") => {
     setCreateForm({ ...INITIAL_CREATE_FORM, open: true, type });
     setCreateError(null);
+    setCreateFieldErrors({});
   };
 
   const openEdit = (client: ClientPolicyItem) => {
@@ -132,19 +137,22 @@ export default function ClientsPage() {
       allowedSecretIds: client.allowedSecretIds,
       allowPlaintextRead: client.allowPlaintextRead,
     });
+    setEditError(null);
+    setEditFieldErrors({});
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErr = validateClientForm({
+    const fieldErrs = validateClientFields({
       type: createForm.type,
       displayName: createForm.displayName,
       redirectUrisRaw: createForm.redirectUrisRaw,
     });
-    if (validationErr) {
-      setCreateError(validationErr);
+    if (Object.keys(fieldErrs).length > 0) {
+      setCreateFieldErrors(fieldErrs);
       return;
     }
+    setCreateFieldErrors({});
 
     setCreateSaving(true);
     setCreateError(null);
@@ -187,10 +195,16 @@ export default function ClientsPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editForm) return;
+    if (!editForm.displayName.trim()) {
+      setEditFieldErrors({ displayName: "请输入消费方名称" });
+      return;
+    }
+    setEditFieldErrors({});
     setEditSaving(true);
+    setEditError(null);
     try {
       await updatePolicy(editForm.client.clientId, {
-        displayName: editForm.displayName.trim() || editForm.client.displayName,
+        displayName: editForm.displayName.trim(),
         allowAll: editForm.allowAll,
         allowedFolderIds: editForm.allowAll ? [] : editForm.allowedFolderIds,
         allowedSecretIds: editForm.allowAll ? [] : editForm.allowedSecretIds,
@@ -199,7 +213,7 @@ export default function ClientsPage() {
       setEditForm(null);
       toast.success("权限策略已更新，秒级生效");
     } catch (err) {
-      toast.danger(err instanceof Error ? err.message : "更新权限失败");
+      setEditError(err instanceof Error ? err.message : "更新权限失败");
     } finally {
       setEditSaving(false);
     }
@@ -225,39 +239,30 @@ export default function ClientsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-basalt-layout-lg">
       <PageHeader
         title="客户端与凭证"
         description="管理 OAuth 2.1 客户端（Gemini / Claude / Cursor）与无头 Bot Bearer Token，支持按文件夹与单密钥细粒度授权"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-basalt-space-lg">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => openCreate("static_oauth")}
             >
-              <KeyRound className="h-4 w-4" strokeWidth={1.5} />
+              <KeyRound className="size-basalt-icon-lg" strokeWidth={1.5} />
               新建静态 OAuth
             </Button>
             <Button type="button" size="sm" onClick={() => openCreate("bot_token")}>
-              <Bot className="h-4 w-4" strokeWidth={1.5} />
+              <Bot className="size-basalt-icon-lg" strokeWidth={1.5} />
               新建 Bot Token
             </Button>
           </div>
         }
       />
 
-      {error && (
-        <LayerCard outlined>
-          <LayerCard.Body className="flex items-center justify-between gap-4">
-            <Text className="text-basalt-base text-basalt-destructive">{error}</Text>
-            <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-              重试
-            </Button>
-          </LayerCard.Body>
-        </LayerCard>
-      )}
+      {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       {loading && clients.length === 0 ? (
         <LayerCard>
@@ -276,20 +281,20 @@ export default function ClientsPage() {
           />
         </LayerCard>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-basalt-layout md:grid-cols-2">
           {clients.map((client) => {
             const statusMeta = getClientStatusMeta(client.status);
             return (
               <LayerCard key={client.clientId}>
-                <LayerCard.Header className="pb-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                <LayerCard.Header>
+                  <div className="flex w-full items-start justify-between gap-basalt-layout-sm">
+                    <div className="min-w-0 space-y-basalt-space-xs">
                       <LayerCard.Title className="truncate">{client.displayName}</LayerCard.Title>
                       <LayerCard.Description className="truncate font-mono text-basalt-sm">
                         {client.clientId}
                       </LayerCard.Description>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
+                    <div className="flex shrink-0 items-center gap-basalt-space-md">
                       <Badge tone="neutral" variant="outline">
                         {getRegistrationTypeLabel(client.registrationType)}
                       </Badge>
@@ -299,23 +304,23 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 </LayerCard.Header>
-                <LayerCard.Body className="space-y-3">
-                  <LayerCard.Well className="space-y-1.5 p-3 text-basalt-sm">
-                    <div className="flex items-center justify-between gap-2">
+                <LayerCard.Body className="space-y-basalt-layout-sm">
+                  <LayerCard.Well className="space-y-basalt-space-md p-basalt-card-sm text-basalt-sm">
+                    <div className="flex items-center justify-between gap-basalt-space-lg">
                       <span className="text-basalt-muted-foreground">授权范围</span>
                       <span className="font-medium">{summarizeClientScope(client)}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-basalt-space-lg">
                       <span className="text-basalt-muted-foreground">明文读取</span>
                       <span>{client.allowPlaintextRead ? "允许 get_secret" : "仅元数据"}</span>
                     </div>
                     {client.tokenPreview && (
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center justify-between gap-basalt-space-lg">
                         <span className="text-basalt-muted-foreground">Token 掩码</span>
                         <span className="font-mono">{client.tokenPreview}</span>
                       </div>
                     )}
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-basalt-space-lg">
                       <span className="text-basalt-muted-foreground">累计调用 / 最近使用</span>
                       <span className="tabular-nums">
                         {client.callCount} 次 · {formatDateTime(client.lastUsedAt)}
@@ -323,7 +328,7 @@ export default function ClientsPage() {
                     </div>
                   </LayerCard.Well>
 
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-basalt-space-lg">
                     <Button
                       type="button"
                       variant="outline"
@@ -331,7 +336,7 @@ export default function ClientsPage() {
                       disabled={client.status === "revoked"}
                       onClick={() => openEdit(client)}
                     >
-                      <Shield className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      <Shield className="size-basalt-icon" strokeWidth={1.5} />
                       权限设置
                     </Button>
                     {client.registrationType === "bot_token" && client.status !== "revoked" && (
@@ -341,7 +346,7 @@ export default function ClientsPage() {
                         size="sm"
                         onClick={() => void rotateBotToken(client)}
                       >
-                        <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <RefreshCw className="size-basalt-icon" strokeWidth={1.5} />
                         轮换 Token
                       </Button>
                     )}
@@ -354,12 +359,12 @@ export default function ClientsPage() {
                       >
                         {client.status === "active" ? (
                           <>
-                            <Pause className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <Pause className="size-basalt-icon" strokeWidth={1.5} />
                             暂停
                           </>
                         ) : (
                           <>
-                            <Play className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <Play className="size-basalt-icon" strokeWidth={1.5} />
                             恢复
                           </>
                         )}
@@ -372,7 +377,7 @@ export default function ClientsPage() {
                         size="sm"
                         onClick={() => setRevokingClient(client)}
                       >
-                        <Ban className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <Ban className="size-basalt-icon" strokeWidth={1.5} />
                         吊销
                       </Button>
                     ) : (
@@ -382,7 +387,7 @@ export default function ClientsPage() {
                         size="sm"
                         onClick={() => setDeletingClient(client)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
                         删除
                       </Button>
                     )}
@@ -410,18 +415,20 @@ export default function ClientsPage() {
                 : "适用于不支持 DCR 的客户端或在 Gemini Developer Mode 中手动填写 client_id / client_secret。"}
             </DialogDescription>
           </DialogHeader>
-          <DialogForm onSubmit={handleCreateSubmit}>
-            {createError && (
-              <Text className="text-basalt-sm text-basalt-destructive">{createError}</Text>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="create-client-name">消费方名称</Label>
+          <DialogForm onSubmit={handleCreateSubmit} noValidate>
+            {createError && <Banner tone="danger" size="sm" description={createError} />}
+            <Field
+              label="消费方名称"
+              htmlFor="create-client-name"
+              error={createFieldErrors.displayName}
+            >
               <Input
                 id="create-client-name"
                 value={createForm.displayName}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({ ...prev, displayName: e.target.value }))
-                }
+                onChange={(e) => {
+                  setCreateForm((prev) => ({ ...prev, displayName: e.target.value }));
+                  setCreateFieldErrors((prev) => ({ ...prev, displayName: undefined }));
+                }}
                 placeholder={
                   createForm.type === "bot_token"
                     ? "例如：CI 巡检 Agent"
@@ -429,11 +436,10 @@ export default function ClientsPage() {
                 }
                 required
               />
-            </div>
+            </Field>
 
             {createForm.type === "bot_token" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="create-bot-expires">过期日期（可选）</Label>
+              <Field label="过期日期（可选）" htmlFor="create-bot-expires">
                 <Input
                   id="create-bot-expires"
                   type="date"
@@ -442,24 +448,28 @@ export default function ClientsPage() {
                     setCreateForm((prev) => ({ ...prev, expiresAtDate: e.target.value }))
                   }
                 />
-              </div>
+              </Field>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-redirect-uris">回调地址（每行一个）</Label>
+              <div className="grid gap-basalt-layout sm:grid-cols-2">
+                <Field
+                  label="回调地址（每行一个）"
+                  htmlFor="create-redirect-uris"
+                  error={createFieldErrors.redirectUrisRaw}
+                >
                   <Textarea
                     id="create-redirect-uris"
                     rows={3}
                     value={createForm.redirectUrisRaw}
-                    onChange={(e) =>
-                      setCreateForm((prev) => ({ ...prev, redirectUrisRaw: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      setCreateForm((prev) => ({ ...prev, redirectUrisRaw: e.target.value }));
+                      setCreateFieldErrors((prev) => ({ ...prev, redirectUrisRaw: undefined }));
+                    }}
                     className="font-mono text-basalt-sm"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="create-auth-method">Token 认证方式</Label>
-                  <Select
+                </Field>
+                <Field label="Token 认证方式" htmlFor="create-auth-method">
+                  <FormSelect
+                    id="create-auth-method"
                     value={createForm.tokenEndpointAuthMethod}
                     onValueChange={(value) =>
                       setCreateForm((prev) => ({
@@ -470,17 +480,9 @@ export default function ClientsPage() {
                           | "none",
                       }))
                     }
-                  >
-                    <SelectTrigger id="create-auth-method">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client_secret_post">client_secret_post</SelectItem>
-                      <SelectItem value="client_secret_basic">client_secret_basic</SelectItem>
-                      <SelectItem value="none">none（公开客户端）</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                    options={AUTH_METHOD_OPTIONS}
+                  />
+                </Field>
               </div>
             )}
 
@@ -530,18 +532,23 @@ export default function ClientsPage() {
             </DialogDescription>
           </DialogHeader>
           {editForm && (
-            <DialogForm onSubmit={handleEditSubmit}>
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-client-name">消费方名称</Label>
+            <DialogForm onSubmit={handleEditSubmit} noValidate>
+              {editError && <Banner tone="danger" size="sm" description={editError} />}
+              <Field
+                label="消费方名称"
+                htmlFor="edit-client-name"
+                error={editFieldErrors.displayName}
+              >
                 <Input
                   id="edit-client-name"
                   value={editForm.displayName}
-                  onChange={(e) =>
-                    setEditForm((prev) => (prev ? { ...prev, displayName: e.target.value } : null))
-                  }
+                  onChange={(e) => {
+                    setEditForm((prev) => (prev ? { ...prev, displayName: e.target.value } : null));
+                    setEditFieldErrors({});
+                  }}
                   required
                 />
-              </div>
+              </Field>
 
               <ScopeSelector
                 idPrefix="edit-client"
@@ -599,9 +606,9 @@ export default function ClientsPage() {
                 description="关闭弹窗后将无法再次查看完整明文，仅可通过轮换生成新凭证。"
               />
               {issuedCredential.kind === "bot_token" ? (
-                <div className="space-y-2">
+                <div className="space-y-basalt-space-lg">
                   <Label>Authorization Bearer Token</Label>
-                  <LayerCard.Well className="break-all p-3 font-mono text-basalt-sm select-all">
+                  <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
                     {issuedCredential.token}
                   </LayerCard.Well>
                   <Button
@@ -609,27 +616,27 @@ export default function ClientsPage() {
                     size="sm"
                     onClick={() => void copyText(issuedCredential.token, "Bot Token")}
                   >
-                    <Copy className="h-4 w-4" strokeWidth={1.5} />
+                    <Copy className="size-basalt-icon-lg" strokeWidth={1.5} />
                     复制 Bot Token
                   </Button>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="space-y-1">
+                <div className="space-y-basalt-layout-sm">
+                  <div className="space-y-basalt-space-sm">
                     <Label>Client ID</Label>
-                    <LayerCard.Well className="break-all p-2.5 font-mono text-basalt-sm select-all">
+                    <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
                       {issuedCredential.clientId}
                     </LayerCard.Well>
                   </div>
                   {issuedCredential.clientSecret && (
-                    <div className="space-y-1">
+                    <div className="space-y-basalt-space-sm">
                       <Label>Client Secret</Label>
-                      <LayerCard.Well className="break-all p-2.5 font-mono text-basalt-sm select-all">
+                      <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-sm select-all">
                         {issuedCredential.clientSecret}
                       </LayerCard.Well>
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-basalt-space-lg">
                     <Button
                       type="button"
                       size="sm"

@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Field,
   Input,
   Label,
   LayerCard,
@@ -23,6 +24,7 @@ import {
   Textarea,
   toast,
 } from "@nocoo/basalt";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   Select,
@@ -44,6 +46,8 @@ import { TagBadge } from "@nocoo/basalt/components/tag-badge";
 import { Copy, Eye, Folder, FolderPlus, Pencil, Plus, Search, Trash2 } from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
+import { ErrorBanner } from "@/components/ErrorBanner";
+import { FormSelect } from "@/components/FormSelect";
 import {
   FOLDER_COLOR_OPTIONS,
   formatDateTime,
@@ -52,11 +56,13 @@ import {
 } from "@/models/format";
 import type { FolderItem, SecretItem } from "@/models/types";
 import {
+  type FolderFieldErrors,
+  type SecretFieldErrors,
   parseMetadataJson,
   parseTagsInput,
   slugifyName,
-  validateFolderForm,
-  validateSecretForm,
+  validateFolderFields,
+  validateSecretFields,
 } from "@/models/validators";
 import { useSecretsViewModel } from "@/viewmodels/useSecretsViewModel";
 
@@ -135,17 +141,20 @@ export default function SecretsPage() {
   const [folderForm, setFolderForm] = useState<FolderFormState>(EMPTY_FOLDER_FORM);
   const [folderSaving, setFolderSaving] = useState(false);
   const [folderError, setFolderError] = useState<string | null>(null);
+  const [folderFieldErrors, setFolderFieldErrors] = useState<FolderFieldErrors>({});
   const [deletingFolder, setDeletingFolder] = useState<FolderItem | null>(null);
 
   const [secretDialogOpen, setSecretDialogOpen] = useState(false);
   const [secretForm, setSecretForm] = useState<SecretFormState>(EMPTY_SECRET_FORM);
   const [secretSaving, setSecretSaving] = useState(false);
   const [secretError, setSecretError] = useState<string | null>(null);
+  const [secretFieldErrors, setSecretFieldErrors] = useState<SecretFieldErrors>({});
   const [deletingSecret, setDeletingSecret] = useState<SecretItem | null>(null);
 
   const openNewFolder = () => {
     setFolderForm(EMPTY_FOLDER_FORM);
     setFolderError(null);
+    setFolderFieldErrors({});
     setFolderDialogOpen(true);
   };
 
@@ -159,16 +168,18 @@ export default function SecretsPage() {
       sortOrder: folder.sortOrder,
     });
     setFolderError(null);
+    setFolderFieldErrors({});
     setFolderDialogOpen(true);
   };
 
   const handleSaveFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErr = validateFolderForm(folderForm);
-    if (validationErr) {
-      setFolderError(validationErr);
+    const fieldErrs = validateFolderFields(folderForm);
+    if (Object.keys(fieldErrs).length > 0) {
+      setFolderFieldErrors(fieldErrs);
       return;
     }
+    setFolderFieldErrors({});
     setFolderSaving(true);
     setFolderError(null);
     try {
@@ -197,6 +208,7 @@ export default function SecretsPage() {
           : "__none__",
     });
     setSecretError(null);
+    setSecretFieldErrors({});
     setSecretDialogOpen(true);
   };
 
@@ -215,12 +227,13 @@ export default function SecretsPage() {
       expiresAtDate: item.expiresAt ? item.expiresAt.slice(0, 10) : "",
     });
     setSecretError(null);
+    setSecretFieldErrors({});
     setSecretDialogOpen(true);
   };
 
   const handleSaveSecret = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErr = validateSecretForm({
+    const fieldErrs = validateSecretFields({
       name: secretForm.name,
       slug: secretForm.slug,
       service: secretForm.service,
@@ -228,15 +241,16 @@ export default function SecretsPage() {
       isEdit: secretForm.editingId !== null,
       metadataRaw: secretForm.metadataRaw,
     });
-    if (validationErr) {
-      setSecretError(validationErr);
+    if (Object.keys(fieldErrs).length > 0) {
+      setSecretFieldErrors(fieldErrs);
       return;
     }
     const metaParsed = parseMetadataJson(secretForm.metadataRaw);
     if (!metaParsed.ok) {
-      setSecretError(metaParsed.error);
+      setSecretFieldErrors({ metadataRaw: metaParsed.error });
       return;
     }
+    setSecretFieldErrors({});
 
     setSecretSaving(true);
     setSecretError(null);
@@ -281,35 +295,40 @@ export default function SecretsPage() {
     }
   };
 
+  const folderOptions = [
+    { value: "__none__", label: "未分类" },
+    ...folders.map((f) => ({ value: f.id, label: f.name })),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-basalt-layout-lg">
       <PageHeader
         title="密钥库"
         description="按文件夹归类管理 AES-256-GCM 加密凭证，支持掩码预览与按需明文查看"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-basalt-space-lg">
             <Button type="button" variant="outline" size="sm" onClick={openNewFolder}>
-              <FolderPlus className="h-4 w-4" strokeWidth={1.5} />
+              <FolderPlus className="size-basalt-icon-lg" strokeWidth={1.5} />
               新建文件夹
             </Button>
             <Button type="button" size="sm" onClick={openNewSecret}>
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              <Plus className="size-basalt-icon-lg" strokeWidth={1.5} />
               新增密钥
             </Button>
           </div>
         }
         filters={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative w-64">
+          <div className="flex flex-wrap items-center gap-basalt-layout-sm">
+            <div className="relative w-basalt-64">
               <Search
-                className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-basalt-muted-foreground"
+                className="pointer-events-none absolute left-basalt-space-lg top-2.5 size-basalt-icon-lg text-basalt-muted-foreground"
                 strokeWidth={1.5}
               />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="搜索名称、slug、服务或标签..."
-                className="pl-8"
+                className="pl-basalt-8"
                 aria-label="搜索密钥"
               />
             </div>
@@ -330,23 +349,14 @@ export default function SecretsPage() {
         }
       />
 
-      {error && (
-        <LayerCard outlined>
-          <LayerCard.Body className="flex items-center justify-between gap-4">
-            <Text className="text-basalt-base text-basalt-destructive">{error}</Text>
-            <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-              重试
-            </Button>
-          </LayerCard.Body>
-        </LayerCard>
-      )}
+      {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-basalt-layout lg:grid-cols-[240px_1fr]">
         <LayerCard padding="sm" className="h-fit">
-          <LayerCard.Header className="pb-2">
+          <LayerCard.Header>
             <LayerCard.Title className="text-basalt-base">文件夹</LayerCard.Title>
           </LayerCard.Header>
-          <LayerCard.Body className="space-y-1">
+          <LayerCard.Body className="space-y-basalt-space-sm">
             <Button
               type="button"
               variant={selectedFolder === "all" ? "secondary" : "ghost"}
@@ -354,8 +364,8 @@ export default function SecretsPage() {
               className="w-full justify-between"
               onClick={() => setSelectedFolder("all")}
             >
-              <span className="flex items-center gap-2">
-                <Folder className="h-4 w-4" strokeWidth={1.5} />
+              <span className="flex items-center gap-basalt-space-lg">
+                <Folder className="size-basalt-icon-lg" strokeWidth={1.5} />
                 全部密钥
               </span>
               <Badge tone="neutral" variant="soft">
@@ -369,8 +379,11 @@ export default function SecretsPage() {
               className="w-full justify-between"
               onClick={() => setSelectedFolder("__uncategorized__")}
             >
-              <span className="flex items-center gap-2">
-                <Folder className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
+              <span className="flex items-center gap-basalt-space-lg">
+                <Folder
+                  className="size-basalt-icon-lg text-basalt-muted-foreground"
+                  strokeWidth={1.5}
+                />
                 未分类
               </span>
               <Badge tone="neutral" variant="soft">
@@ -379,7 +392,7 @@ export default function SecretsPage() {
             </Button>
 
             {folders.map((folder) => (
-              <div key={folder.id} className="group flex items-center gap-1">
+              <div key={folder.id} className="group flex items-center gap-basalt-space-sm">
                 <Button
                   type="button"
                   variant={selectedFolder === folder.id ? "secondary" : "ghost"}
@@ -405,7 +418,7 @@ export default function SecretsPage() {
                   aria-label={`编辑文件夹 ${folder.name}`}
                   onClick={() => openEditFolder(folder)}
                 >
-                  <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <Pencil className="size-basalt-icon" strokeWidth={1.5} />
                 </Button>
                 <Button
                   type="button"
@@ -414,7 +427,7 @@ export default function SecretsPage() {
                   aria-label={`删除文件夹 ${folder.name}`}
                   onClick={() => setDeletingFolder(folder)}
                 >
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
                 </Button>
               </div>
             ))}
@@ -424,21 +437,18 @@ export default function SecretsPage() {
         <LayerCard padding="none">
           <LayerCard.Body className="p-0">
             {loading && secrets.length === 0 ? (
-              <div className="p-6">
-                <LayerCard.Loading label="加载密钥列表..." />
-              </div>
+              <LayerCard.Loading label="加载密钥列表..." className="p-basalt-card-lg" />
             ) : filteredSecrets.length === 0 ? (
-              <div className="p-6">
-                <LayerCard.Empty
-                  title="暂无密钥"
-                  description="点击右上角「新增密钥」录入你的第一个 API Key 或 Token"
-                  action={
-                    <Button type="button" size="sm" onClick={openNewSecret}>
-                      新增密钥
-                    </Button>
-                  }
-                />
-              </div>
+              <LayerCard.Empty
+                title="暂无密钥"
+                description="点击右上角「新增密钥」录入你的第一个 API Key 或 Token"
+                action={
+                  <Button type="button" size="sm" onClick={openNewSecret}>
+                    新增密钥
+                  </Button>
+                }
+                className="p-basalt-card-lg"
+              />
             ) : (
               <Table>
                 <TableHeader>
@@ -481,7 +491,7 @@ export default function SecretsPage() {
                           {item.maskedPreview}
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-basalt-space-md">
                             <Badge tone={item.isEnabled ? "success" : "neutral"} variant="soft">
                               {item.isEnabled ? "启用" : "停用"}
                             </Badge>
@@ -496,7 +506,7 @@ export default function SecretsPage() {
                           {formatDateTime(item.lastUsedAt)} · {item.useCount} 次
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-basalt-space-sm">
                             <Button
                               type="button"
                               variant="ghost"
@@ -504,7 +514,7 @@ export default function SecretsPage() {
                               aria-label={`查看明文 ${item.name}`}
                               onClick={() => void handleReveal(item)}
                             >
-                              <Eye className="h-4 w-4" strokeWidth={1.5} />
+                              <Eye className="size-basalt-icon-lg" strokeWidth={1.5} />
                             </Button>
                             <Button
                               type="button"
@@ -513,7 +523,7 @@ export default function SecretsPage() {
                               aria-label={`编辑密钥 ${item.name}`}
                               onClick={() => openEditSecret(item)}
                             >
-                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                              <Pencil className="size-basalt-icon-lg" strokeWidth={1.5} />
                             </Button>
                             <Button
                               type="button"
@@ -522,7 +532,7 @@ export default function SecretsPage() {
                               aria-label={`删除密钥 ${item.name}`}
                               onClick={() => setDeletingSecret(item)}
                             >
-                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                              <Trash2 className="size-basalt-icon-lg" strokeWidth={1.5} />
                             </Button>
                           </div>
                         </TableCell>
@@ -545,12 +555,9 @@ export default function SecretsPage() {
               通过文件夹组织凭证，方便为 OAuth 客户端或 Bot Token 一键批量授权。
             </DialogDescription>
           </DialogHeader>
-          <DialogForm onSubmit={handleSaveFolder}>
-            {folderError && (
-              <Text className="text-basalt-sm text-basalt-destructive">{folderError}</Text>
-            )}
-            <div className="space-y-1.5">
-              <Label htmlFor="folder-name">文件夹名称</Label>
+          <DialogForm onSubmit={handleSaveFolder} noValidate>
+            {folderError && <Banner tone="danger" size="sm" description={folderError} />}
+            <Field label="文件夹名称" htmlFor="folder-name" error={folderFieldErrors.name}>
               <Input
                 id="folder-name"
                 value={folderForm.name}
@@ -561,41 +568,33 @@ export default function SecretsPage() {
                     name,
                     slug: prev.editingId ? prev.slug : slugifyName(name) || prev.slug,
                   }));
+                  setFolderFieldErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 placeholder="例如：个人开发工具"
                 required
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="folder-slug">唯一标识（Slug）</Label>
+            </Field>
+            <Field label="唯一标识（Slug）" htmlFor="folder-slug" error={folderFieldErrors.slug}>
               <Input
                 id="folder-slug"
                 value={folderForm.slug}
-                onChange={(e) => setFolderForm((prev) => ({ ...prev, slug: e.target.value }))}
+                onChange={(e) => {
+                  setFolderForm((prev) => ({ ...prev, slug: e.target.value }));
+                  setFolderFieldErrors((prev) => ({ ...prev, slug: undefined }));
+                }}
                 placeholder="例如：dev-tools"
                 required
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="folder-color">颜色标识</Label>
-              <Select
+            </Field>
+            <Field label="颜色标识" htmlFor="folder-color">
+              <FormSelect
+                id="folder-color"
                 value={folderForm.color}
                 onValueChange={(value) => setFolderForm((prev) => ({ ...prev, color: value }))}
-              >
-                <SelectTrigger id="folder-color">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FOLDER_COLOR_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="folder-desc">描述（可选）</Label>
+                options={FOLDER_COLOR_OPTIONS}
+              />
+            </Field>
+            <Field label="描述（可选）" htmlFor="folder-desc">
               <Input
                 id="folder-desc"
                 value={folderForm.description}
@@ -604,7 +603,7 @@ export default function SecretsPage() {
                 }
                 placeholder="说明该文件夹内凭证的用途范围"
               />
-            </div>
+            </Field>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setFolderDialogOpen(false)}>
                 取消
@@ -626,13 +625,10 @@ export default function SecretsPage() {
               明文将使用服务端 AES-256-GCM 密钥加密存储，前端不缓存明文。
             </DialogDescription>
           </DialogHeader>
-          <DialogForm onSubmit={handleSaveSecret}>
-            {secretError && (
-              <Text className="text-basalt-sm text-basalt-destructive">{secretError}</Text>
-            )}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-name">名称</Label>
+          <DialogForm onSubmit={handleSaveSecret} noValidate>
+            {secretError && <Banner tone="danger" size="sm" description={secretError} />}
+            <div className="grid gap-basalt-layout sm:grid-cols-2">
+              <Field label="名称" htmlFor="secret-name" error={secretFieldErrors.name}>
                 <Input
                   id="secret-name"
                   value={secretForm.name}
@@ -643,72 +639,69 @@ export default function SecretsPage() {
                       name,
                       slug: prev.editingId ? prev.slug : slugifyName(name) || prev.slug,
                     }));
+                    setSecretFieldErrors((prev) => ({ ...prev, name: undefined }));
                   }}
                   placeholder="Cloudflare DNS 只读 Token"
                   required
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-slug">Slug</Label>
+              </Field>
+              <Field label="Slug" htmlFor="secret-slug" error={secretFieldErrors.slug}>
                 <Input
                   id="secret-slug"
                   value={secretForm.slug}
-                  onChange={(e) => setSecretForm((prev) => ({ ...prev, slug: e.target.value }))}
+                  onChange={(e) => {
+                    setSecretForm((prev) => ({ ...prev, slug: e.target.value }));
+                    setSecretFieldErrors((prev) => ({ ...prev, slug: undefined }));
+                  }}
                   placeholder="cloudflare-dns-readonly"
                   required
                 />
-              </div>
+              </Field>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-service">归属服务</Label>
+            <div className="grid gap-basalt-layout sm:grid-cols-2">
+              <Field label="归属服务" htmlFor="secret-service" error={secretFieldErrors.service}>
                 <Input
                   id="secret-service"
                   value={secretForm.service}
-                  onChange={(e) => setSecretForm((prev) => ({ ...prev, service: e.target.value }))}
+                  onChange={(e) => {
+                    setSecretForm((prev) => ({ ...prev, service: e.target.value }));
+                    setSecretFieldErrors((prev) => ({ ...prev, service: undefined }));
+                  }}
                   placeholder="cloudflare / github / openai"
                   required
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-folder">所属文件夹</Label>
-                <Select
+              </Field>
+              <Field label="所属文件夹" htmlFor="secret-folder">
+                <FormSelect
+                  id="secret-folder"
                   value={secretForm.folderId}
                   onValueChange={(value) => setSecretForm((prev) => ({ ...prev, folderId: value }))}
-                >
-                  <SelectTrigger id="secret-folder">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">未分类</SelectItem>
-                    {folders.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  options={folderOptions}
+                />
+              </Field>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="secret-value">
-                {secretForm.editingId ? "轮换密钥值（留空则保持原值）" : "密钥明文值"}
-              </Label>
+            <Field
+              label={secretForm.editingId ? "轮换密钥值（留空则保持原值）" : "密钥明文值"}
+              htmlFor="secret-value"
+              error={secretFieldErrors.value}
+            >
               <SensitiveInput
                 id="secret-value"
                 value={secretForm.value}
-                onChange={(e) => setSecretForm((prev) => ({ ...prev, value: e.target.value }))}
+                onChange={(e) => {
+                  setSecretForm((prev) => ({ ...prev, value: e.target.value }));
+                  setSecretFieldErrors((prev) => ({ ...prev, value: undefined }));
+                }}
                 placeholder={secretForm.editingId ? "输入新密钥以替换" : "粘贴 API Key 或 Token"}
                 revealLabel="显示密钥"
                 hideLabel="隐藏密钥"
                 passwordManagerIgnore
               />
-            </div>
+            </Field>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="secret-desc">AI 用途说明</Label>
+            <Field label="AI 用途说明" htmlFor="secret-desc">
               <Input
                 id="secret-desc"
                 value={secretForm.description}
@@ -717,20 +710,18 @@ export default function SecretsPage() {
                 }
                 placeholder="供 AI 检索匹配使用，例如：查询个人域名 DNS 解析记录"
               />
-            </div>
+            </Field>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-tags">标签（逗号分隔）</Label>
+            <div className="grid gap-basalt-layout sm:grid-cols-2">
+              <Field label="标签（逗号分隔）" htmlFor="secret-tags">
                 <Input
                   id="secret-tags"
                   value={secretForm.tagsRaw}
                   onChange={(e) => setSecretForm((prev) => ({ ...prev, tagsRaw: e.target.value }))}
                   placeholder="dns, readonly, gemini"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="secret-expires">过期日期（可选）</Label>
+              </Field>
+              <Field label="过期日期（可选）" htmlFor="secret-expires">
                 <Input
                   id="secret-expires"
                   type="date"
@@ -739,22 +730,26 @@ export default function SecretsPage() {
                     setSecretForm((prev) => ({ ...prev, expiresAtDate: e.target.value }))
                   }
                 />
-              </div>
+              </Field>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="secret-metadata">附加非敏感元数据（JSON）</Label>
+            <Field
+              label="附加非敏感元数据（JSON）"
+              htmlFor="secret-metadata"
+              error={secretFieldErrors.metadataRaw}
+            >
               <Textarea
                 id="secret-metadata"
                 rows={3}
                 value={secretForm.metadataRaw}
-                onChange={(e) =>
-                  setSecretForm((prev) => ({ ...prev, metadataRaw: e.target.value }))
-                }
+                onChange={(e) => {
+                  setSecretForm((prev) => ({ ...prev, metadataRaw: e.target.value }));
+                  setSecretFieldErrors((prev) => ({ ...prev, metadataRaw: undefined }));
+                }}
                 className="font-mono text-basalt-sm"
                 placeholder='{"base_url": "https://api.cloudflare.com/client/v4"}'
               />
-            </div>
+            </Field>
 
             <div className="flex items-center justify-between">
               <Label htmlFor="secret-enabled">启用该密钥</Label>
@@ -793,7 +788,7 @@ export default function SecretsPage() {
               <Text className="font-mono text-basalt-sm text-basalt-muted-foreground">
                 Slug: {revealed.slug}
               </Text>
-              <LayerCard.Well className="break-all p-3 font-mono text-basalt-md select-all">
+              <LayerCard.Well className="break-all p-basalt-card-sm font-mono text-basalt-md select-all">
                 {revealed.value}
               </LayerCard.Well>
             </DialogBody>
@@ -804,7 +799,7 @@ export default function SecretsPage() {
             </Button>
             {revealed && (
               <Button type="button" onClick={() => void copyValue(revealed.value, "密钥明文")}>
-                <Copy className="h-4 w-4" strokeWidth={1.5} />
+                <Copy className="size-basalt-icon-lg" strokeWidth={1.5} />
                 复制明文
               </Button>
             )}

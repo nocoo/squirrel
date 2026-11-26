@@ -47,9 +47,9 @@ export function ScopeSelector({
   idPrefix = "scope",
 }: ScopeSelectorProps) {
   return (
-    <div className="space-y-4">
-      <LayerCard.Well className="flex items-center justify-between gap-4 p-3">
-        <div className="space-y-0.5">
+    <div className="space-y-basalt-layout">
+      <LayerCard.Well className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
+        <div className="space-y-basalt-space-xs">
           <Label htmlFor={`${idPrefix}-allow-plaintext`} className="text-basalt-base font-medium">
             允许读取明文密钥（get_secret）
           </Label>
@@ -64,8 +64,8 @@ export function ScopeSelector({
         />
       </LayerCard.Well>
 
-      <LayerCard.Well className="flex items-center justify-between gap-4 p-3">
-        <div className="space-y-0.5">
+      <LayerCard.Well className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
+        <div className="space-y-basalt-space-xs">
           <Label htmlFor={`${idPrefix}-allow-all`} className="text-basalt-base font-medium">
             授予全部密钥权限（*）
           </Label>
@@ -81,9 +81,9 @@ export function ScopeSelector({
       </LayerCard.Well>
 
       {!allowAll && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-basalt-layout md:grid-cols-2">
           <LayerCard padding="sm" outlined>
-            <LayerCard.Header className="pb-2">
+            <LayerCard.Header>
               <LayerCard.Title className="text-basalt-base">按文件夹授权</LayerCard.Title>
               <LayerCard.Description className="text-basalt-sm">
                 已选 {allowedFolderIds.length} 个（包含文件夹内动态新增密钥）
@@ -91,21 +91,21 @@ export function ScopeSelector({
             </LayerCard.Header>
             <LayerCard.Body>
               {folders.length === 0 ? (
-                <Text className="py-4 text-center text-basalt-sm text-basalt-muted-foreground">
+                <Text className="py-basalt-layout text-center text-basalt-sm text-basalt-muted-foreground">
                   暂无文件夹
                 </Text>
               ) : (
-                <ScrollArea className="h-44 pr-2">
-                  <div className="space-y-2">
+                <ScrollArea className="h-basalt-40 pr-basalt-space-lg">
+                  <div className="space-y-basalt-space-lg">
                     {folders.map((folder) => {
                       const checked = allowedFolderIds.includes(folder.id);
                       const checkboxId = `${idPrefix}-folder-${folder.id}`;
                       return (
                         <div
                           key={folder.id}
-                          className="flex items-center justify-between gap-2 py-1"
+                          className="flex items-center justify-between gap-basalt-space-lg py-basalt-space-sm"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex min-w-0 items-center gap-basalt-space-lg">
                             <Checkbox
                               id={checkboxId}
                               checked={checked}
@@ -136,7 +136,7 @@ export function ScopeSelector({
           </LayerCard>
 
           <LayerCard padding="sm" outlined>
-            <LayerCard.Header className="pb-2">
+            <LayerCard.Header>
               <LayerCard.Title className="text-basalt-base">按单个密钥授权</LayerCard.Title>
               <LayerCard.Description className="text-basalt-sm">
                 已选 {allowedSecretIds.length} 个（叠加授权独立密钥）
@@ -144,12 +144,12 @@ export function ScopeSelector({
             </LayerCard.Header>
             <LayerCard.Body>
               {secrets.length === 0 ? (
-                <Text className="py-4 text-center text-basalt-sm text-basalt-muted-foreground">
+                <Text className="py-basalt-layout text-center text-basalt-sm text-basalt-muted-foreground">
                   暂无密钥
                 </Text>
               ) : (
-                <ScrollArea className="h-44 pr-2">
-                  <div className="space-y-2">
+                <ScrollArea className="h-basalt-40 pr-basalt-space-lg">
+                  <div className="space-y-basalt-space-lg">
                     {secrets.map((secret) => {
                       const checked = allowedSecretIds.includes(secret.id);
                       const coveredByFolder =
@@ -158,9 +158,9 @@ export function ScopeSelector({
                       return (
                         <div
                           key={secret.id}
-                          className="flex items-center justify-between gap-2 py-1"
+                          className="flex items-center justify-between gap-basalt-space-lg py-basalt-space-sm"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex min-w-0 items-center gap-basalt-space-lg">
                             <Checkbox
                               id={checkboxId}
                               checked={checked || coveredByFolder}

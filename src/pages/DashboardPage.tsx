@@ -29,6 +29,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { formatDateTime } from "@/models/format";
 import { useDashboardViewModel } from "@/viewmodels/useDashboardViewModel";
 
@@ -39,12 +40,12 @@ export default function DashboardPage() {
   const summary = stats?.summary;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-basalt-layout-lg">
       <PageHeader
         title="概览"
         description="Squirrel 密钥托管状态、消费方调用趋势与安全预警"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-basalt-space-lg">
             <SegmentControl
               value={String(days)}
               onValueChange={(val) => {
@@ -59,23 +60,14 @@ export default function DashboardPage() {
               ]}
             />
             <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-              <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+              <RefreshCw className="size-basalt-icon-lg" strokeWidth={1.5} />
               刷新
             </Button>
           </div>
         }
       />
 
-      {error && (
-        <LayerCard outlined>
-          <LayerCard.Body className="flex items-center justify-between gap-4">
-            <Text className="text-basalt-base text-basalt-destructive">{error}</Text>
-            <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-              重试
-            </Button>
-          </LayerCard.Body>
-        </LayerCard>
-      )}
+      {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       <SectionRule title="核心指标" hint="实时反映 D1 密钥库、客户端策略与审计记录" />
       <StatGrid columns={3}>
@@ -83,42 +75,42 @@ export default function DashboardPage() {
           title="托管密钥"
           value={summary?.totalSecrets ?? 0}
           subtitle={`已启用 ${summary?.enabledSecrets ?? 0} 个 · ${summary?.totalFolders ?? 0} 个文件夹`}
-          icon={<KeyRound className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<KeyRound className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title="活跃消费方"
           value={summary?.activeClients ?? 0}
           subtitle="含 OAuth 2.1 与无头 Bot Token"
-          icon={<Bot className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<Bot className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title={`近 ${days} 日调用`}
           value={summary?.totalCalls ?? 0}
           subtitle={`放行率 ${allowRate}（${summary?.allowedCalls ?? 0} 次放行）`}
-          icon={<Activity className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<Activity className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title={`近 ${days} 日拒绝`}
           value={summary?.deniedCalls ?? 0}
           subtitle="越权、停用或已过期拦截"
-          icon={<ShieldAlert className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<ShieldAlert className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title="30 天内临期"
           value={summary?.expiringSoonCount ?? 0}
           subtitle="建议及时轮换临期凭证"
-          icon={<AlertTriangle className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<AlertTriangle className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title="文件夹数量"
           value={summary?.totalFolders ?? 0}
           subtitle="按文件夹粒度隔离授权范围"
-          icon={<Folder className="h-4 w-4" strokeWidth={1.5} />}
+          icon={<Folder className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
       </StatGrid>
@@ -156,7 +148,9 @@ export default function DashboardPage() {
                       if (!active || !payload?.length) return null;
                       return (
                         <ChartTooltip>
-                          <div className="mb-1 text-basalt-sm font-medium">{String(label)}</div>
+                          <div className="mb-basalt-space-sm text-basalt-sm font-medium">
+                            {String(label)}
+                          </div>
                           {payload.map((entry) => (
                             <ChartTooltipRow
                               key={String(entry.dataKey)}
@@ -190,7 +184,7 @@ export default function DashboardPage() {
         </LayerCard.Body>
       </LayerCard>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-basalt-layout lg:grid-cols-2">
         <LayerCard>
           <LayerCard.Header>
             <LayerCard.Title>高频密钥 Top 10</LayerCard.Title>
@@ -200,11 +194,11 @@ export default function DashboardPage() {
             {!stats || stats.topSecrets.length === 0 ? (
               <LayerCard.Empty title="暂无读取记录" description="密钥被读取后将在此显示排名" />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-basalt-space-lg">
                 {stats.topSecrets.map((item) => (
                   <LayerCard.Well
                     key={item.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-basalt-layout-sm px-basalt-card-sm py-basalt-space-lg"
                   >
                     <div className="min-w-0">
                       <Text className="truncate text-basalt-base font-medium">{item.name}</Text>
@@ -212,7 +206,7 @@ export default function DashboardPage() {
                         {item.slug} · {item.service}
                       </Text>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-basalt-space-lg">
                       <Badge tone="info" variant="soft" className="tabular-nums">
                         {item.useCount} 次
                       </Badge>
@@ -234,11 +228,11 @@ export default function DashboardPage() {
             (stats.expiringSoonSecrets.length === 0 && stats.staleSecrets.length === 0) ? (
               <LayerCard.Empty title="状态健康" description="暂无临期或长期未用的僵尸密钥" />
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-basalt-space-lg">
                 {stats.expiringSoonSecrets.map((item) => (
                   <LayerCard.Well
                     key={`exp-${item.id}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-basalt-layout-sm px-basalt-card-sm py-basalt-space-lg"
                   >
                     <div className="min-w-0">
                       <Text className="truncate text-basalt-base font-medium">{item.name}</Text>
@@ -254,7 +248,7 @@ export default function DashboardPage() {
                 {stats.staleSecrets.map((item) => (
                   <LayerCard.Well
                     key={`stale-${item.id}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2"
+                    className="flex items-center justify-between gap-basalt-layout-sm px-basalt-card-sm py-basalt-space-lg"
                   >
                     <div className="min-w-0">
                       <Text className="truncate text-basalt-base font-medium">{item.name}</Text>

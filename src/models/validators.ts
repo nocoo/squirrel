@@ -60,14 +60,46 @@ export function parseMetadataJson(raw: string):
   return { ok: true, value: out };
 }
 
-export function validateFolderForm(input: { name: string; slug: string }): string | null {
+export type FolderFieldErrors = Partial<Record<"name" | "slug", string>>;
+
+export function validateFolderFields(input: { name: string; slug: string }): FolderFieldErrors {
+  const errors: FolderFieldErrors = {};
   if (!input.name.trim()) {
-    return "请输入文件夹名称";
+    errors.name = "请输入文件夹名称";
   }
   if (!isValidSlug(input.slug)) {
-    return "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）";
+    errors.slug = "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）";
   }
-  return null;
+  return errors;
+}
+
+export function validateFolderForm(input: { name: string; slug: string }): string | null {
+  const errors = validateFolderFields(input);
+  return errors.name ?? errors.slug ?? null;
+}
+
+export type SecretFieldErrors = Partial<
+  Record<"name" | "slug" | "service" | "value" | "metadataRaw", string>
+>;
+
+export function validateSecretFields(input: {
+  name: string;
+  slug: string;
+  service: string;
+  value: string;
+  isEdit: boolean;
+  metadataRaw: string;
+}): SecretFieldErrors {
+  const errors: SecretFieldErrors = {};
+  if (!input.name.trim()) errors.name = "请输入密钥名称";
+  if (!isValidSlug(input.slug)) {
+    errors.slug = "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）";
+  }
+  if (!input.service.trim()) errors.service = "请输入归属服务（如 cloudflare、github）";
+  if (!input.isEdit && !input.value) errors.value = "请输入密钥明文值";
+  const metaCheck = parseMetadataJson(input.metadataRaw);
+  if (!metaCheck.ok) errors.metadataRaw = metaCheck.error;
+  return errors;
 }
 
 export function validateSecretForm(input: {
@@ -78,24 +110,20 @@ export function validateSecretForm(input: {
   isEdit: boolean;
   metadataRaw: string;
 }): string | null {
-  if (!input.name.trim()) return "请输入密钥名称";
-  if (!isValidSlug(input.slug)) {
-    return "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）";
-  }
-  if (!input.service.trim()) return "请输入归属服务（如 cloudflare、github）";
-  if (!input.isEdit && !input.value) return "请输入密钥明文值";
-  const metaCheck = parseMetadataJson(input.metadataRaw);
-  if (!metaCheck.ok) return metaCheck.error;
-  return null;
+  const errors = validateSecretFields(input);
+  return errors.name ?? errors.slug ?? errors.service ?? errors.value ?? errors.metadataRaw ?? null;
 }
 
-export function validateClientForm(input: {
+export type ClientFieldErrors = Partial<Record<"displayName" | "redirectUrisRaw", string>>;
+
+export function validateClientFields(input: {
   type: "bot_token" | "static_oauth";
   displayName: string;
   redirectUrisRaw: string;
-}): string | null {
+}): ClientFieldErrors {
+  const errors: ClientFieldErrors = {};
   if (!input.displayName.trim()) {
-    return "请输入消费方名称";
+    errors.displayName = "请输入消费方名称";
   }
   if (input.type === "static_oauth") {
     const uris = input.redirectUrisRaw
@@ -103,15 +131,26 @@ export function validateClientForm(input: {
       .map((s) => s.trim())
       .filter(Boolean);
     if (uris.length === 0) {
-      return "静态 OAuth 客户端至少需要一个回调地址（Redirect URI）";
-    }
-    for (const uri of uris) {
-      try {
-        new URL(uri);
-      } catch {
-        return `无效的回调 URL：${uri}`;
+      errors.redirectUrisRaw = "静态 OAuth 客户端至少需要一个回调地址（Redirect URI）";
+    } else {
+      for (const uri of uris) {
+        try {
+          new URL(uri);
+        } catch {
+          errors.redirectUrisRaw = `无效的回调 URL：${uri}`;
+          break;
+        }
       }
     }
   }
-  return null;
+  return errors;
+}
+
+export function validateClientForm(input: {
+  type: "bot_token" | "static_oauth";
+  displayName: string;
+  redirectUrisRaw: string;
+}): string | null {
+  const errors = validateClientFields(input);
+  return errors.displayName ?? errors.redirectUrisRaw ?? null;
 }

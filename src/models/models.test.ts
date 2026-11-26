@@ -18,8 +18,11 @@ import {
   parseMetadataJson,
   parseTagsInput,
   slugifyName,
+  validateClientFields,
   validateClientForm,
+  validateFolderFields,
   validateFolderForm,
+  validateSecretFields,
   validateSecretForm,
 } from "@/models/validators";
 
@@ -174,6 +177,37 @@ describe("validators", () => {
         redirectUrisRaw: "https://oauth-redirect.googleusercontent.com/r/abc",
       }),
     ).toBeNull();
+
+    expect(validateFolderFields({ name: "", slug: "!" })).toEqual({
+      name: "请输入文件夹名称",
+      slug: "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）",
+    });
+    expect(
+      validateSecretFields({
+        name: "",
+        slug: "!",
+        service: "",
+        value: "",
+        isEdit: false,
+        metadataRaw: "[]",
+      }),
+    ).toEqual({
+      name: "请输入密钥名称",
+      slug: "Slug 仅支持小写字母、数字、短横线或下划线（2–63 字符）",
+      service: "请输入归属服务（如 cloudflare、github）",
+      value: "请输入密钥明文值",
+      metadataRaw: "附加元数据顶层必须是键值对对象",
+    });
+    expect(
+      validateClientFields({
+        type: "static_oauth",
+        displayName: "",
+        redirectUrisRaw: "bad-url",
+      }),
+    ).toEqual({
+      displayName: "请输入消费方名称",
+      redirectUrisRaw: "无效的回调 URL：bad-url",
+    });
   });
 });
 

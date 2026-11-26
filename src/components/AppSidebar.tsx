@@ -211,7 +211,7 @@ function SquirrelSidebarBody({
                       aria-label={item.title}
                       onClick={onNavigate}
                     >
-                      <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+                      <Icon className="size-basalt-icon-lg" strokeWidth={1.5} aria-hidden="true" />
                     </SidebarIconItem>
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
@@ -232,7 +232,11 @@ function SquirrelSidebarBody({
                       active={active}
                       onClick={onNavigate}
                     >
-                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                      <Icon
+                        className="size-basalt-icon-lg shrink-0"
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
                       <span className="flex-1 truncate text-left">{item.title}</span>
                     </SidebarItem>
                   );
@@ -263,7 +267,10 @@ function SquirrelSidebarBody({
                   value={item.title}
                   onSelect={() => handleSelect(item.path)}
                 >
-                  <item.icon className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
+                  <item.icon
+                    className="size-basalt-icon-lg text-basalt-muted-foreground"
+                    strokeWidth={1.5}
+                  />
                   <span>{item.title}</span>
                 </CommandItem>
               ))}

@@ -1,4 +1,4 @@
-import { Badge, Button, LayerCard, TablePager, Text } from "@nocoo/basalt";
+import { Badge, Button, LayerCard, TablePager } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@nocoo/basalt/components/table";
 import { Info, RefreshCw } from "@nocoo/basalt/icons";
+import { ErrorBanner } from "@/components/ErrorBanner";
 import { formatDateTime, getAuditDecisionMeta } from "@/models/format";
 import { useAuditLogsViewModel } from "@/viewmodels/useAuditLogsViewModel";
 
@@ -40,18 +41,18 @@ export default function AuditLogsPage() {
   } = useAuditLogsViewModel();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-basalt-layout-lg">
       <PageHeader
         title="审计日志"
         description="追踪每一次 MCP 工具调用、AI 声明原因、权限决策与管理员明文查看"
         actions={
           <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-            <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
+            <RefreshCw className="size-basalt-icon-lg" strokeWidth={1.5} />
             刷新
           </Button>
         }
         filters={
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-basalt-layout-sm">
             <Select value={clientFilter} onValueChange={setClientFilter}>
               <SelectTrigger size="sm" className="w-48" aria-label="按消费方筛选">
                 <SelectValue placeholder="全部消费方" />
@@ -101,35 +102,23 @@ export default function AuditLogsPage() {
       <Banner
         tone="info"
         size="sm"
-        icon={<Info className="h-4 w-4" strokeWidth={1.5} />}
+        icon={<Info className="size-basalt-icon-lg" strokeWidth={1.5} />}
         title="90 天自动清理策略"
         description="系统每日凌晨 03:00 (UTC) 通过 Cloudflare Cron Trigger 自动清除超过 90 天的历史审计日志。"
       />
 
-      {error && (
-        <LayerCard outlined>
-          <LayerCard.Body className="flex items-center justify-between gap-4">
-            <Text className="text-basalt-base text-basalt-destructive">{error}</Text>
-            <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-              重试
-            </Button>
-          </LayerCard.Body>
-        </LayerCard>
-      )}
+      {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       <LayerCard padding="none">
         <LayerCard.Body className="p-0">
           {loading && logs.length === 0 ? (
-            <div className="p-6">
-              <LayerCard.Loading label="加载审计日志..." />
-            </div>
+            <LayerCard.Loading label="加载审计日志..." className="p-basalt-card-lg" />
           ) : logs.length === 0 ? (
-            <div className="p-6">
-              <LayerCard.Empty
-                title="暂无审计日志"
-                description="还没有匹配当前筛选条件的调用记录"
-              />
-            </div>
+            <LayerCard.Empty
+              title="暂无审计日志"
+              description="还没有匹配当前筛选条件的调用记录"
+              className="p-basalt-card-lg"
+            />
           ) : (
             <>
               <Table>
@@ -173,7 +162,7 @@ export default function AuditLogsPage() {
                   })}
                 </TableBody>
               </Table>
-              <div className="border-t border-basalt-border p-3">
+              <div className="border-t border-basalt-border p-basalt-card-sm">
                 <TablePager
                   page={page}
                   pageSize={pageSize}
