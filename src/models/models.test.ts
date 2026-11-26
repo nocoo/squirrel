@@ -24,21 +24,36 @@ import {
 } from "@/models/validators";
 
 describe("lib helpers", () => {
-  it("formats user display with email and fallback", () => {
-    expect(getUserDisplay("lizheng@lizheng.me")).toEqual({
+  it("formats user display with author profile, email, and fallback", () => {
+    expect(
+      getUserDisplay({
+        email: "nocoo@hexly.ai",
+        name: "Nocoo",
+        avatar: "https://lizheng.blog/avatar/nocoo.png",
+      }),
+    ).toEqual({
+      name: "Nocoo",
+      email: "nocoo@hexly.ai",
+      initial: "N",
+      avatar: "https://lizheng.blog/avatar/nocoo.png",
+    });
+    expect(getUserDisplay({ email: "lizheng@lizheng.me", name: null, avatar: null })).toEqual({
       name: "lizheng",
       email: "lizheng@lizheng.me",
       initial: "L",
+      avatar: null,
     });
     expect(getUserDisplay(undefined)).toEqual({
       name: "管理员",
       email: "",
       initial: "S",
+      avatar: null,
     });
-    expect(getUserDisplay("")).toEqual({
+    expect(getUserDisplay({ email: "", name: "", avatar: "" })).toEqual({
       name: "管理员",
       email: "",
       initial: "S",
+      avatar: null,
     });
   });
 

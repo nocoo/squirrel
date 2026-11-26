@@ -52,7 +52,12 @@ describe("L3 HTTP Protocol & API Integration", () => {
       headers: { "Cf-Access-Jwt-Assertion": validJwt },
     });
     expect(okAuth.status).toBe(200);
-    expect(await okAuth.json()).toMatchObject({ email: "nocoo@hexly.ai" });
+    expect(await okAuth.json()).toMatchObject({
+      email: "nocoo@hexly.ai",
+      name: "Nocoo",
+      avatar: "https://lizheng.blog/avatar/nocoo.png",
+      environment: "production",
+    });
   });
 
   it("completes full Gemini OAuth 2.1 + PKCE + 3000-char state + Folder/Key ACL + Revoke flow", async () => {

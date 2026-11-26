@@ -17,7 +17,10 @@ import type { McpCallerContext, OAuthProps, WorkerBindings } from "./types";
 const SCOPES_SUPPORTED = ["secrets:list", "secrets:read"];
 
 function buildDefaultApp() {
-  const app = new Hono<{ Bindings: WorkerBindings; Variables: { adminEmail: string } }>();
+  const app = new Hono<{
+    Bindings: WorkerBindings;
+    Variables: { adminEmail: string; adminName?: string | null };
+  }>();
 
   app.get("/", (c) => {
     const origin = getPublicOrigin(c.req.raw, c.env);

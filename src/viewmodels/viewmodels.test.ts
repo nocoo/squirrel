@@ -127,11 +127,14 @@ describe("useMe & useDashboardViewModel", () => {
   it("loads current admin user and handles error fallback", async () => {
     vi.mocked(api.getMe).mockResolvedValueOnce({
       email: "admin@hexly.ai",
+      name: "Admin",
+      avatar: "https://lizheng.blog/avatar/admin.png",
       environment: "production",
     });
     const { result } = renderHook(() => useMe());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.data?.email).toBe("admin@hexly.ai");
+    expect(result.current.data?.avatar).toBe("https://lizheng.blog/avatar/admin.png");
 
     vi.mocked(api.getMe).mockRejectedValueOnce(new Error("fail"));
     await act(async () => {

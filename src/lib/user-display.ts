@@ -1,17 +1,23 @@
-export function getUserDisplay(email: string | undefined): {
+import type { AdminUserInfo } from "@/models/types";
+
+export function getUserDisplay(
+  user: Pick<AdminUserInfo, "email" | "name" | "avatar"> | null | undefined,
+): {
   name: string;
   email: string;
   initial: string;
+  avatar: string | null;
 } {
-  const cleanEmail = email?.trim() || "";
-  if (!cleanEmail) {
-    return { name: "管理员", email: "", initial: "S" };
-  }
-  const localPart = cleanEmail.split("@")[0] || cleanEmail;
-  const initial = localPart.slice(0, 1).toUpperCase() || "S";
+  const cleanEmail = user?.email?.trim() || "";
+  const cleanName = user?.name?.trim() || "";
+  const cleanAvatar = user?.avatar?.trim() || null;
+  const localPart = cleanEmail ? cleanEmail.split("@")[0] || cleanEmail : "";
+  const name = cleanName || localPart || "管理员";
+  const initial = (cleanName || localPart).slice(0, 1).toUpperCase() || "S";
   return {
-    name: localPart,
+    name,
     email: cleanEmail,
     initial,
+    avatar: cleanAvatar,
   };
 }

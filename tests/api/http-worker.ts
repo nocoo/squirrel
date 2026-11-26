@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -136,8 +137,20 @@ export async function createIsolatedWorker(vars: WorkerVars = {}): Promise<Isola
           ASSETS: serveAssetsStub,
         },
         outboundService: async (request) => {
-          if (String(request.url).includes("/cdn-cgi/access/certs")) {
+          const url = String(request.url);
+          if (url.includes("/cdn-cgi/access/certs")) {
             return kit.jwksResponse();
+          }
+          if (url.startsWith("https://lizheng.blog/api/authors/profile")) {
+            const hash = new URL(url).searchParams.get("hash");
+            const nocooHash = createHash("sha256").update("nocoo@hexly.ai").digest("hex");
+            if (hash === nocooHash) {
+              return Response.json({
+                name: "Nocoo",
+                avatar: "https://lizheng.blog/avatar/nocoo.png",
+              });
+            }
+            return new Response("Not Found", { status: 404 });
           }
           return new Response("blocked", { status: 503 });
         },

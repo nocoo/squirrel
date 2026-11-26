@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { handleAuthTxDecision, handleGetAuthTx } from "../auth/authorize";
 import { validateRedirectUris } from "../auth/dcr-guard";
+import { fetchAuthorProfile } from "../lib/author-profile";
 import {
   decryptSecret,
   encryptSecret,
@@ -116,12 +117,16 @@ function isUniqueConstraintError(err: unknown): boolean {
 
 export const adminRoutes = new Hono<{
   Bindings: WorkerBindings;
-  Variables: { adminEmail: string };
+  Variables: { adminEmail: string; adminName?: string | null };
 }>();
 
-adminRoutes.get("/me", (c) => {
+adminRoutes.get("/me", async (c) => {
+  const email = c.get("adminEmail");
+  const profile = await fetchAuthorProfile(email);
   return c.json({
-    email: c.get("adminEmail"),
+    email,
+    name: profile.name ?? c.get("adminName") ?? null,
+    avatar: profile.avatar,
     environment: c.env.ENVIRONMENT,
   });
 });

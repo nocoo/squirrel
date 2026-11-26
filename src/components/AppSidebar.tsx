@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Sidebar as BasaltSidebar,
   CommandEmpty,
   CommandGroup,
@@ -70,7 +71,7 @@ function isActive(pathname: string, path: string): boolean {
   if (path === "/admin") {
     return pathname === "/admin" || pathname === "/admin/";
   }
-  return pathname.startsWith(path);
+  return pathname === path || pathname.startsWith(`${path}/`);
 }
 
 function usePersistedSidebarCollapsed(
@@ -133,7 +134,12 @@ function SquirrelSidebarBody({
   const { collapsed, peek, peeking } = useSidebar();
   const railCollapsed = collapsed && !(peek && peeking);
   const [searchOpen, setSearchOpen] = useState(false);
-  const { name: userName, initial, email: userEmail } = getUserDisplay(meUser?.email);
+  const {
+    name: userName,
+    initial,
+    email: userEmail,
+    avatar: userAvatarUrl,
+  } = getUserDisplay(meUser);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -157,6 +163,7 @@ function SquirrelSidebarBody({
 
   const avatar = (
     <Avatar>
+      {userAvatarUrl ? <AvatarImage src={userAvatarUrl} alt={userName} /> : null}
       <AvatarFallback className="text-basalt-sm">{initial}</AvatarFallback>
     </Avatar>
   );

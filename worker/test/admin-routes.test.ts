@@ -1,12 +1,22 @@
 import { Hono } from "hono";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { adminRoutes } from "../src/admin/routes";
 import type { WorkerBindings } from "../src/types";
 import { createWorkerTestHarness } from "./miniflare-env";
 
 const cleanups: (() => Promise<void>)[] = [];
 
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({ name: "Test Admin", avatar: "https://lizheng.blog/avatar/test.png" }),
+    ),
+  );
+});
+
 afterEach(async () => {
+  vi.unstubAllGlobals();
   while (cleanups.length > 0) {
     const fn = cleanups.pop();
     if (fn) await fn();
@@ -14,9 +24,13 @@ afterEach(async () => {
 });
 
 function buildAdminApp() {
-  const app = new Hono<{ Bindings: WorkerBindings; Variables: { adminEmail: string } }>();
+  const app = new Hono<{
+    Bindings: WorkerBindings;
+    Variables: { adminEmail: string; adminName?: string | null };
+  }>();
   app.use("/api/admin/*", async (c, next) => {
     c.set("adminEmail", "admin@test.local");
+    c.set("adminName", null);
     return next();
   });
   app.route("/api/admin", adminRoutes);
@@ -61,7 +75,14 @@ describe("adminRoutes L2 coverage", () => {
         h.env,
       );
 
-    expect((await req("/me")).status).toBe(200);
+    const meRes = await req("/me");
+    expect(meRes.status).toBe(200);
+    expect(await meRes.json()).toEqual({
+      email: "admin@test.local",
+      name: "Test Admin",
+      avatar: "https://lizheng.blog/avatar/test.png",
+      environment: "test",
+    });
 
     // Folders CRUD + duplicate slug 409 + 404
     const fRes = await req("/folders", "POST", {

@@ -4,6 +4,8 @@ export type AuditDecision = "allowed" | "denied" | "not_found" | "expired" | "di
 
 export interface AdminUserInfo {
   email: string;
+  name: string | null;
+  avatar: string | null;
   environment: string;
 }
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router";
 import { ThemeProvider, TooltipProvider, LinkProvider, Toaster } from "@nocoo/basalt";
 import { AccentProvider } from "@nocoo/basalt/providers/accent";
@@ -12,18 +12,11 @@ const PALETTE_OVERRIDES = {
 
 function AppRouterLink({
   href,
-  className,
-  children,
-}: {
+  ...rest
+}: Omit<ComponentProps<typeof Link>, "to"> & {
   href: string;
-  className?: string;
-  children?: ReactNode;
 }) {
-  return (
-    <Link to={href} className={className}>
-      {children}
-    </Link>
-  );
+  return <Link to={href} {...rest} />;
 }
 
 export function BasaltProviders({ children }: { children: ReactNode }) {

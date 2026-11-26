@@ -25,7 +25,7 @@ function getJwks(issuerOrigin: string) {
 export async function verifyAccessJwt(
   assertion: string,
   env: WorkerBindings,
-): Promise<{ email: string }> {
+): Promise<{ email: string; name: string | null }> {
   const aud = env.CF_ACCESS_AUD?.trim();
   if (!aud) {
     throw new Error("CF_ACCESS_AUD is not configured");
@@ -36,12 +36,14 @@ export async function verifyAccessJwt(
     audience: aud,
   });
   const email = typeof payload.email === "string" && payload.email ? payload.email : "admin";
-  return { email };
+  const name =
+    typeof payload.name === "string" && payload.name.trim().length > 0 ? payload.name.trim() : null;
+  return { email, name };
 }
 
 export const cfAccessMiddleware = createMiddleware<{
   Bindings: WorkerBindings;
-  Variables: { adminEmail: string };
+  Variables: { adminEmail: string; adminName?: string | null };
 }>(async (c, next) => {
   c.header("Cache-Control", "no-store");
 
@@ -50,14 +52,16 @@ export const cfAccessMiddleware = createMiddleware<{
     const localEmail = c.env.LOCAL_USER_EMAIL?.trim();
     if (c.env.ENVIRONMENT !== "production" && localEmail) {
       c.set("adminEmail", localEmail);
+      c.set("adminName", null);
       return next();
     }
     return c.json({ error: "Missing Cloudflare Access JWT" }, 401);
   }
 
   try {
-    const { email } = await verifyAccessJwt(assertion, c.env);
+    const { email, name } = await verifyAccessJwt(assertion, c.env);
     c.set("adminEmail", email);
+    c.set("adminName", name);
     return next();
   } catch {
     return c.json({ error: "Invalid Cloudflare Access JWT" }, 403);
