@@ -249,7 +249,7 @@ function SquirrelSidebarBody({
           name={userName}
           email={userEmail || undefined}
           avatar={avatar}
-          tooltip={userName}
+          tooltip={userEmail ? `${userName} (${userEmail})` : userName}
           signOutHref={ACCESS_LOGOUT_URL}
           signOutLabel="退出登录"
         />

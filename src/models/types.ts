@@ -85,6 +85,9 @@ export interface DashboardStats {
     totalCalls: number;
     allowedCalls: number;
     deniedCalls: number;
+    previousTotalCalls: number;
+    previousAllowedCalls: number;
+    previousDeniedCalls: number;
     expiringSoonCount: number;
   };
   dailySeries: {

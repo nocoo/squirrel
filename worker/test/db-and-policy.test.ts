@@ -187,6 +187,16 @@ describe("D1 repository & folder/secret ACL", () => {
       toolName: "get_secret",
       secretId: "sec_stale",
       secretSlug: "stale-key",
+      reason: "prev period run",
+      decision: "allowed",
+      createdAt: new Date(nowMs - 10 * 86_400_000).toISOString(),
+    });
+    await insertAuditLog(h.env.DB, {
+      clientId: "cli_stats",
+      clientName: "Stats Client",
+      toolName: "get_secret",
+      secretId: "sec_stale",
+      secretSlug: "stale-key",
       reason: "recent deny",
       decision: "denied",
       errorCode: "ACCESS_DENIED",
@@ -204,6 +214,9 @@ describe("D1 repository & folder/secret ACL", () => {
     expect(stats.summary.totalSecrets).toBe(1);
     expect(stats.summary.activeClients).toBe(1);
     expect(stats.summary.deniedCalls).toBe(1);
+    expect(stats.summary.previousTotalCalls).toBe(1);
+    expect(stats.summary.previousAllowedCalls).toBe(1);
+    expect(stats.summary.previousDeniedCalls).toBe(0);
     expect(stats.summary.expiringSoonCount).toBe(1);
     expect(stats.dailySeries).toHaveLength(7);
     expect(stats.staleSecrets).toHaveLength(1);

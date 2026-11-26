@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/data/api";
-import { buildDailyChartData, computeAllowRate } from "@/models/dashboard";
+import {
+  buildDailyChartData,
+  computeAllowRate,
+  computeAllowRateValue,
+  computePeriodDelta,
+} from "@/models/dashboard";
 import type { DashboardStats } from "@/models/types";
 
 export function useDashboardViewModel() {
@@ -31,6 +36,23 @@ export function useDashboardViewModel() {
     () => (stats ? computeAllowRate(stats.summary.allowedCalls, stats.summary.totalCalls) : "—"),
     [stats],
   );
+  const allowRateValue = useMemo(
+    () =>
+      stats ? computeAllowRateValue(stats.summary.allowedCalls, stats.summary.totalCalls) : null,
+    [stats],
+  );
+  const callsDelta = useMemo(
+    () =>
+      stats ? computePeriodDelta(stats.summary.totalCalls, stats.summary.previousTotalCalls) : null,
+    [stats],
+  );
+  const deniedDelta = useMemo(
+    () =>
+      stats
+        ? computePeriodDelta(stats.summary.deniedCalls, stats.summary.previousDeniedCalls)
+        : null,
+    [stats],
+  );
 
   return {
     days,
@@ -38,6 +60,9 @@ export function useDashboardViewModel() {
     stats,
     chartData,
     allowRate,
+    allowRateValue,
+    callsDelta,
+    deniedDelta,
     loading,
     error,
     reload: () => load(days),

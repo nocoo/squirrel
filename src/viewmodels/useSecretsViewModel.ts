@@ -3,6 +3,8 @@ import { api } from "@/data/api";
 import type { FolderItem, SecretItem } from "@/models/types";
 
 export type FolderSelection = "all" | "__uncategorized__" | string;
+export type SecretSortKey = "name" | "service" | "lastUsedAt" | "useCount";
+export type SecretSortDir = "asc" | "desc";
 
 export function useSecretsViewModel() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -13,6 +15,8 @@ export function useSecretsViewModel() {
   const [selectedFolder, setSelectedFolder] = useState<FolderSelection>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [serviceFilter, setServiceFilter] = useState("all");
+  const [sortKey, setSortKey] = useState<SecretSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SecretSortDir>("asc");
   const [revealed, setRevealed] = useState<{
     id: string;
     slug: string;
@@ -51,9 +55,35 @@ export function useSecretsViewModel() {
     [secrets],
   );
 
+  const hasActiveFilters =
+    selectedFolder !== "all" || searchQuery.trim().length > 0 || serviceFilter !== "all";
+
+  const clearFilters = useCallback(() => {
+    setSelectedFolder("all");
+    setSearchQuery("");
+    setServiceFilter("all");
+  }, []);
+
+  const toggleSort = useCallback(
+    (key: SecretSortKey) => {
+      if (sortKey === key) {
+        if (sortDir === "asc") {
+          setSortDir("desc");
+        } else {
+          setSortKey(null);
+          setSortDir("asc");
+        }
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey, sortDir],
+  );
+
   const filteredSecrets = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return secrets.filter((item) => {
+    const list = secrets.filter((item) => {
       if (selectedFolder === "__uncategorized__" && item.folderId !== null) return false;
       if (
         selectedFolder !== "all" &&
@@ -73,7 +103,28 @@ export function useSecretsViewModel() {
         item.tags.some((t) => t.toLowerCase().includes(q))
       );
     });
-  }, [secrets, selectedFolder, serviceFilter, searchQuery]);
+
+    if (!sortKey) return list;
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case "name":
+          return a.name.localeCompare(b.name) * dir;
+        case "service":
+          return a.service.localeCompare(b.service) * dir;
+        case "useCount":
+          return (a.useCount - b.useCount) * dir;
+        case "lastUsedAt": {
+          const ta = a.lastUsedAt ? Date.parse(a.lastUsedAt) : 0;
+          const tb = b.lastUsedAt ? Date.parse(b.lastUsedAt) : 0;
+          return (ta - tb) * dir;
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [secrets, selectedFolder, serviceFilter, searchQuery, sortKey, sortDir]);
 
   const saveFolder = useCallback(
     async (
@@ -178,6 +229,11 @@ export function useSecretsViewModel() {
     setSearchQuery,
     serviceFilter,
     setServiceFilter,
+    hasActiveFilters,
+    clearFilters,
+    sortKey,
+    sortDir,
+    toggleSort,
     loading,
     error,
     revealed,

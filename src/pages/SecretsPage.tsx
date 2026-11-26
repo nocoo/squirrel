@@ -15,6 +15,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Field,
   Input,
   Label,
@@ -23,6 +28,9 @@ import {
   Switch,
   Text,
   Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   toast,
 } from "@nocoo/basalt";
 import { Banner } from "@nocoo/basalt/components/banner";
@@ -45,10 +53,21 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSortableHeader,
 } from "@nocoo/basalt/components/table";
 import { TagBadge } from "@nocoo/basalt/components/tag-badge";
 import { TagColorPicker } from "@nocoo/basalt/components/tag-color-picker";
-import { Eye, Folder, FolderPlus, Pencil, Plus, Search, Trash2, X } from "@nocoo/basalt/icons";
+import {
+  Eye,
+  Folder,
+  FolderPlus,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -71,7 +90,7 @@ import {
   validateFolderFields,
   validateSecretFields,
 } from "@/models/validators";
-import { useSecretsViewModel } from "@/viewmodels/useSecretsViewModel";
+import { type SecretSortKey, useSecretsViewModel } from "@/viewmodels/useSecretsViewModel";
 
 interface FolderFormState {
   editingId: string | null;
@@ -119,6 +138,15 @@ const EMPTY_SECRET_FORM: SecretFormState = {
   expiresAtDate: "",
 };
 
+function ariaSortFor(
+  activeKey: SecretSortKey | null,
+  dir: "asc" | "desc",
+  key: SecretSortKey,
+): "ascending" | "descending" | "none" {
+  if (activeKey !== key) return "none";
+  return dir === "asc" ? "ascending" : "descending";
+}
+
 export default function SecretsPage() {
   const {
     folders,
@@ -132,6 +160,11 @@ export default function SecretsPage() {
     setSearchQuery,
     serviceFilter,
     setServiceFilter,
+    hasActiveFilters,
+    clearFilters,
+    sortKey,
+    sortDir,
+    toggleSort,
     loading,
     error,
     revealed,
@@ -157,15 +190,6 @@ export default function SecretsPage() {
   const [secretError, setSecretError] = useState<string | null>(null);
   const [secretFieldErrors, setSecretFieldErrors] = useState<SecretFieldErrors>({});
   const [deletingSecret, setDeletingSecret] = useState<SecretItem | null>(null);
-
-  const hasActiveFilters =
-    selectedFolder !== "all" || searchQuery.trim().length > 0 || serviceFilter !== "all";
-
-  const clearFilters = () => {
-    setSelectedFolder("all");
-    setSearchQuery("");
-    setServiceFilter("all");
-  };
 
   const selectedFolderLabel =
     selectedFolder === "__uncategorized__"
@@ -401,12 +425,16 @@ export default function SecretsPage() {
 
       {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
-      <div className="grid gap-basalt-layout lg:grid-cols-[240px_1fr]">
-        <LayerCard padding="sm" className="h-fit">
-          <LayerCard.Header>
-            <LayerCard.Title>文件夹</LayerCard.Title>
-          </LayerCard.Header>
-          <LayerCard.Body className="space-y-basalt-space-sm">
+      <LayerCard padding="none">
+        <div className="grid min-w-0 lg:grid-cols-[15rem_minmax(0,1fr)]">
+          <aside
+            aria-label="文件夹筛选"
+            className="border-b border-basalt-border p-basalt-card-sm lg:border-r lg:border-b-0"
+          >
+            <div className="mb-basalt-space-lg px-basalt-space-lg">
+              <h2 className="text-basalt-sm font-medium text-basalt-muted-foreground">文件夹</h2>
+            </div>
+
             {loading && secrets.length === 0 ? (
               <div role="status" aria-label="加载文件夹..." className="space-y-basalt-space-lg">
                 {Array.from({ length: 4 }, (_, idx) => (
@@ -414,7 +442,7 @@ export default function SecretsPage() {
                 ))}
               </div>
             ) : (
-              <>
+              <div className="space-y-basalt-space-sm">
                 <Button
                   type="button"
                   variant={selectedFolder === "all" ? "secondary" : "ghost"}
@@ -426,7 +454,7 @@ export default function SecretsPage() {
                     <Folder className="size-basalt-icon-lg" strokeWidth={1.5} />
                     全部密钥
                   </span>
-                  <Badge tone="neutral" variant="soft">
+                  <Badge tone="neutral" variant="soft" className="tabular-nums">
                     {secrets.length}
                   </Badge>
                 </Button>
@@ -444,7 +472,7 @@ export default function SecretsPage() {
                     />
                     未分类
                   </span>
-                  <Badge tone="neutral" variant="soft">
+                  <Badge tone="neutral" variant="soft" className="tabular-nums">
                     {uncategorizedCount}
                   </Badge>
                 </Button>
@@ -465,37 +493,44 @@ export default function SecretsPage() {
                           size="sm"
                         />
                       </span>
-                      <Badge tone="neutral" variant="soft">
+                      <Badge tone="neutral" variant="soft" className="tabular-nums">
                         {folder.secretCount}
                       </Badge>
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`编辑文件夹 ${folder.name}`}
-                      onClick={() => openEditFolder(folder)}
-                    >
-                      <Pencil className="size-basalt-icon" strokeWidth={1.5} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`删除文件夹 ${folder.name}`}
-                      onClick={() => setDeletingFolder(folder)}
-                    >
-                      <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`文件夹操作 ${folder.name}`}
+                          className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 max-lg:opacity-100"
+                        >
+                          <MoreHorizontal className="size-basalt-icon" strokeWidth={1.5} />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => openEditFolder(folder)}>
+                          <Pencil className="size-basalt-icon" strokeWidth={1.5} />
+                          编辑文件夹
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onSelect={() => setDeletingFolder(folder)}
+                        >
+                          <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
+                          删除文件夹
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ))}
-              </>
+              </div>
             )}
-          </LayerCard.Body>
-        </LayerCard>
+          </aside>
 
-        <LayerCard padding="none">
-          <LayerCard.Body className="p-0">
+          <div className="min-w-0">
             {loading && secrets.length === 0 ? (
               <div role="status" aria-label="加载密钥列表...">
                 <Table>
@@ -507,7 +542,8 @@ export default function SecretsPage() {
                       <TableHead>掩码预览</TableHead>
                       <TableHead>状态</TableHead>
                       <TableHead>最近读取</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
+                      <TableHead textAlign="end">调用次数</TableHead>
+                      <TableHead textAlign="end">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -532,10 +568,13 @@ export default function SecretsPage() {
                           <Skeleton width={48} height={20} />
                         </TableCell>
                         <TableCell>
-                          <Skeleton width={96} height={14} />
+                          <Skeleton width={84} height={14} />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton width={76} height={24} className="ml-auto" />
+                        <TableCell textAlign="end">
+                          <Skeleton width={40} height={14} className="ml-auto" />
+                        </TableCell>
+                        <TableCell textAlign="end">
+                          <Skeleton width={56} height={24} className="ml-auto" />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -543,27 +582,73 @@ export default function SecretsPage() {
                 </Table>
               </div>
             ) : filteredSecrets.length === 0 ? (
-              <LayerCard.Empty
-                title="暂无密钥"
-                description="点击右上角「新增密钥」录入你的第一个 API Key 或 Token"
-                action={
-                  <Button type="button" size="sm" onClick={openNewSecret}>
-                    新增密钥
-                  </Button>
-                }
-                className="p-basalt-card-lg"
-              />
+              secrets.length === 0 ? (
+                <LayerCard.Empty
+                  title="暂无密钥"
+                  description="尚未录入任何 API Key 或 Token，点击下方按钮立即新增"
+                  action={
+                    <Button type="button" size="sm" onClick={openNewSecret}>
+                      新增密钥
+                    </Button>
+                  }
+                  className="p-basalt-card-lg"
+                />
+              ) : (
+                <LayerCard.Empty
+                  title="没有匹配的密钥"
+                  description="当前筛选条件下没有结果"
+                  action={
+                    <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                      清除筛选
+                    </Button>
+                  }
+                  className="p-basalt-card-lg"
+                />
+              )
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>名称 / Slug</TableHead>
+                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "name")}>
+                      <TableSortableHeader
+                        sorted={sortKey === "name" ? sortDir : undefined}
+                        onClick={() => toggleSort("name")}
+                      >
+                        名称 / Slug
+                      </TableSortableHeader>
+                    </TableHead>
                     <TableHead>文件夹</TableHead>
-                    <TableHead>服务</TableHead>
+                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "service")}>
+                      <TableSortableHeader
+                        sorted={sortKey === "service" ? sortDir : undefined}
+                        onClick={() => toggleSort("service")}
+                      >
+                        服务
+                      </TableSortableHeader>
+                    </TableHead>
                     <TableHead>掩码预览</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>最近读取</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
+                    <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "lastUsedAt")}>
+                      <TableSortableHeader
+                        sorted={sortKey === "lastUsedAt" ? sortDir : undefined}
+                        onClick={() => toggleSort("lastUsedAt")}
+                      >
+                        最近读取
+                      </TableSortableHeader>
+                    </TableHead>
+                    <TableHead
+                      textAlign="end"
+                      aria-sort={ariaSortFor(sortKey, sortDir, "useCount")}
+                    >
+                      <TableSortableHeader
+                        textAlign="end"
+                        sorted={sortKey === "useCount" ? sortDir : undefined}
+                        onClick={() => toggleSort("useCount")}
+                      >
+                        调用次数
+                      </TableSortableHeader>
+                    </TableHead>
+                    <TableHead textAlign="end">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -572,8 +657,8 @@ export default function SecretsPage() {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <div className="font-medium">{item.name}</div>
-                          <div className="font-mono text-basalt-sm text-basalt-muted-foreground">
+                          <div className="max-w-52 truncate font-medium">{item.name}</div>
+                          <div className="max-w-52 truncate font-mono text-basalt-sm text-basalt-muted-foreground">
                             {item.slug}
                           </div>
                         </TableCell>
@@ -606,38 +691,61 @@ export default function SecretsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-basalt-sm text-basalt-muted-foreground tabular-nums">
-                          {formatDateTime(item.lastUsedAt)} · {item.useCount} 次
+                        <TableCell className="whitespace-nowrap text-basalt-sm text-basalt-muted-foreground tabular-nums">
+                          {formatDateTime(item.lastUsedAt)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          textAlign="end"
+                          className="font-mono text-basalt-sm tabular-nums"
+                        >
+                          {item.useCount}
+                        </TableCell>
+                        <TableCell textAlign="end">
                           <div className="flex items-center justify-end gap-basalt-space-sm">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`查看明文 ${item.name}`}
-                              onClick={() => void handleReveal(item)}
-                            >
-                              <Eye className="size-basalt-icon-lg" strokeWidth={1.5} />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`编辑密钥 ${item.name}`}
-                              onClick={() => openEditSecret(item)}
-                            >
-                              <Pencil className="size-basalt-icon-lg" strokeWidth={1.5} />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label={`删除密钥 ${item.name}`}
-                              onClick={() => setDeletingSecret(item)}
-                            >
-                              <Trash2 className="size-basalt-icon-lg" strokeWidth={1.5} />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label={`查看明文 ${item.name}`}
+                                  onClick={() => void handleReveal(item)}
+                                >
+                                  <Eye className="size-basalt-icon-lg" strokeWidth={1.5} />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>查看明文</TooltipContent>
+                            </Tooltip>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label={`更多操作 ${item.name}`}
+                                >
+                                  <MoreHorizontal
+                                    className="size-basalt-icon-lg"
+                                    strokeWidth={1.5}
+                                  />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => openEditSecret(item)}>
+                                  <Pencil className="size-basalt-icon" strokeWidth={1.5} />
+                                  编辑密钥
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  variant="destructive"
+                                  onSelect={() => setDeletingSecret(item)}
+                                >
+                                  <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
+                                  删除密钥
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -646,9 +754,9 @@ export default function SecretsPage() {
                 </TableBody>
               </Table>
             )}
-          </LayerCard.Body>
-        </LayerCard>
-      </div>
+          </div>
+        </div>
+      </LayerCard>
 
       {/* Folder Create / Edit Dialog */}
       <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>

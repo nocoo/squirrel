@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { getUserDisplay } from "@/lib/user-display";
 import { APP_VERSION } from "@/lib/version";
-import { buildDailyChartData, computeAllowRate } from "@/models/dashboard";
+import {
+  buildDailyChartData,
+  computeAllowRate,
+  computeAllowRateValue,
+  computePeriodDelta,
+} from "@/models/dashboard";
 import {
   FOLDER_COLOR_LABELS,
   FOLDER_COLOR_VALUES,
@@ -295,6 +300,11 @@ describe("formatters & dashboard transforms", () => {
     expect(buildDailyChartData(null)).toEqual([]);
     expect(computeAllowRate(0, 0)).toBe("—");
     expect(computeAllowRate(3, 4)).toBe("75%");
+    expect(computeAllowRateValue(0, 0)).toBeNull();
+    expect(computeAllowRateValue(3, 4)).toBe(75);
+    expect(computePeriodDelta(5, 0)).toBeNull();
+    expect(computePeriodDelta(15, 10)).toBe(50);
+    expect(computePeriodDelta(5, 10)).toBe(-50);
 
     const stats: DashboardStats = {
       summary: {
@@ -305,6 +315,9 @@ describe("formatters & dashboard transforms", () => {
         totalCalls: 10,
         allowedCalls: 8,
         deniedCalls: 2,
+        previousTotalCalls: 8,
+        previousAllowedCalls: 6,
+        previousDeniedCalls: 2,
         expiringSoonCount: 0,
       },
       dailySeries: [{ date: "2026-11-26", allowed: 8, denied: 2 }],

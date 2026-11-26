@@ -154,6 +154,9 @@ describe("useMe & useDashboardViewModel", () => {
         totalCalls: 4,
         allowedCalls: 3,
         deniedCalls: 1,
+        previousTotalCalls: 2,
+        previousAllowedCalls: 2,
+        previousDeniedCalls: 0,
         expiringSoonCount: 0,
       },
       dailySeries: [{ date: "2026-11-26", allowed: 3, denied: 1 }],
@@ -166,6 +169,9 @@ describe("useMe & useDashboardViewModel", () => {
     const { result } = renderHook(() => useDashboardViewModel());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.allowRate).toBe("75%");
+    expect(result.current.allowRateValue).toBe(75);
+    expect(result.current.callsDelta).toBe(100);
+    expect(result.current.deniedDelta).toBeNull();
     expect(result.current.chartData).toHaveLength(1);
 
     act(() => result.current.setDays(30));
@@ -219,6 +225,23 @@ describe("useSecretsViewModel", () => {
       result.current.setSearchQuery("dns");
     });
     expect(result.current.filteredSecrets.map((s) => s.id)).toEqual(["sec_1"]);
+    expect(result.current.hasActiveFilters).toBe(true);
+
+    act(() => result.current.clearFilters());
+    expect(result.current.hasActiveFilters).toBe(false);
+    expect(result.current.filteredSecrets).toHaveLength(2);
+
+    act(() => result.current.toggleSort("name"));
+    expect(result.current.filteredSecrets.map((s) => s.id)).toEqual(["sec_1", "sec_2"]);
+    act(() => result.current.toggleSort("name"));
+    expect(result.current.filteredSecrets.map((s) => s.id)).toEqual(["sec_2", "sec_1"]);
+    act(() => result.current.toggleSort("name"));
+    expect(result.current.sortKey).toBeNull();
+    act(() => result.current.toggleSort("service"));
+    expect(result.current.filteredSecrets.map((s) => s.service)).toEqual(["cloudflare", "github"]);
+    act(() => result.current.toggleSort("useCount"));
+    act(() => result.current.toggleSort("lastUsedAt"));
+    expect(result.current.sortKey).toBe("lastUsedAt");
 
     await act(async () => {
       await result.current.saveFolder(null, {

@@ -22,3 +22,13 @@ export function computeAllowRate(allowed: number, total: number): string {
   if (total <= 0) return "—";
   return `${Math.round((allowed / total) * 100)}%`;
 }
+
+export function computeAllowRateValue(allowed: number, total: number): number | null {
+  if (total <= 0) return null;
+  return Math.round((allowed / total) * 100);
+}
+
+export function computePeriodDelta(current: number, previous: number): number | null {
+  if (previous <= 0) return null;
+  return Math.round(((current - previous) / previous) * 100);
+}

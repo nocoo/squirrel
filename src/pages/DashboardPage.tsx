@@ -1,25 +1,19 @@
-import { Badge, Button, LayerCard, SegmentControl, Skeleton, Text } from "@nocoo/basalt";
+import { Badge, Button, LayerCard, Meter, SegmentControl, Skeleton, Text } from "@nocoo/basalt";
 import {
   AXIS_CONFIG,
   ChartFrame,
   ChartLegend,
   ChartTooltip,
+  ChartTooltipDivider,
   ChartTooltipRow,
+  ChartTooltipSummary,
   GRID_PROPS,
   getChartColor,
 } from "@nocoo/basalt/components/chart";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { SectionRule } from "@nocoo/basalt/components/section-rule";
 import { StatCard, StatGrid } from "@nocoo/basalt/components/stat-card";
-import {
-  Activity,
-  AlertTriangle,
-  Bot,
-  Folder,
-  KeyRound,
-  RefreshCw,
-  ShieldAlert,
-} from "@nocoo/basalt/icons";
+import { Activity, Bot, KeyRound, RefreshCw, ShieldAlert } from "@nocoo/basalt/icons";
 import {
   Bar,
   BarChart as RechartsBarChart,
@@ -30,14 +24,28 @@ import {
   YAxis,
 } from "recharts";
 import { ErrorBanner } from "@/components/ErrorBanner";
+import { computeAllowRate } from "@/models/dashboard";
 import { formatDateTime } from "@/models/format";
 import { useDashboardViewModel } from "@/viewmodels/useDashboardViewModel";
 
 export default function DashboardPage() {
-  const { days, setDays, stats, chartData, allowRate, loading, error, reload } =
-    useDashboardViewModel();
+  const {
+    days,
+    setDays,
+    stats,
+    chartData,
+    allowRate,
+    allowRateValue,
+    callsDelta,
+    deniedDelta,
+    loading,
+    error,
+    reload,
+  } = useDashboardViewModel();
 
   const summary = stats?.summary;
+  const expiringCount = stats?.expiringSoonSecrets.length ?? 0;
+  const staleCount = stats?.staleSecrets.length ?? 0;
 
   return (
     <div className="space-y-basalt-layout-lg">
@@ -45,7 +53,7 @@ export default function DashboardPage() {
         title="概览"
         description="Squirrel 密钥托管状态、消费方调用趋势与安全预警"
         actions={
-          <div className="flex items-center gap-basalt-space-lg">
+          <div className="flex w-full items-center justify-between gap-basalt-space-lg sm:w-auto sm:justify-end">
             <SegmentControl
               value={String(days)}
               onValueChange={(val) => {
@@ -70,47 +78,63 @@ export default function DashboardPage() {
       {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       <SectionRule title="核心指标" hint="实时反映 D1 密钥库、客户端策略与审计记录" />
-      <StatGrid columns={3}>
+      <StatGrid columns={4}>
         <StatCard
           title="托管密钥"
           value={summary?.totalSecrets ?? 0}
-          subtitle={`已启用 ${summary?.enabledSecrets ?? 0} 个 · ${summary?.totalFolders ?? 0} 个文件夹`}
+          subtitle={`已启用 ${summary?.enabledSecrets ?? 0} · ${summary?.totalFolders ?? 0} 文件夹`}
           icon={<KeyRound className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title="活跃消费方"
           value={summary?.activeClients ?? 0}
-          subtitle="含 OAuth 2.1 与无头 Bot Token"
+          subtitle="OAuth 2.1 与 Bot 凭证"
           icon={<Bot className="size-basalt-icon-lg" strokeWidth={1.5} />}
           loading={loading && !stats}
         />
         <StatCard
           title={`近 ${days} 日调用`}
           value={summary?.totalCalls ?? 0}
-          subtitle={`放行率 ${allowRate}（${summary?.allowedCalls ?? 0} 次放行）`}
+          subtitle={`放行 ${summary?.allowedCalls ?? 0} 次 · 放行率 ${allowRate}`}
           icon={<Activity className="size-basalt-icon-lg" strokeWidth={1.5} />}
+          trend={callsDelta !== null ? { value: callsDelta, label: `较前 ${days} 天` } : undefined}
           loading={loading && !stats}
-        />
+        >
+          {allowRateValue !== null ? (
+            <Meter
+              value={allowRateValue}
+              size="sm"
+              hideValue
+              tone={allowRateValue >= 90 ? "success" : allowRateValue >= 70 ? "warning" : "danger"}
+              aria-label="放行率"
+            />
+          ) : null}
+        </StatCard>
         <StatCard
           title={`近 ${days} 日拒绝`}
           value={summary?.deniedCalls ?? 0}
-          subtitle="越权、停用或已过期拦截"
+          subtitle="越权、停用或过期拦截"
           icon={<ShieldAlert className="size-basalt-icon-lg" strokeWidth={1.5} />}
-          loading={loading && !stats}
-        />
-        <StatCard
-          title="30 天内临期"
-          value={summary?.expiringSoonCount ?? 0}
-          subtitle="建议及时轮换临期凭证"
-          icon={<AlertTriangle className="size-basalt-icon-lg" strokeWidth={1.5} />}
-          loading={loading && !stats}
-        />
-        <StatCard
-          title="文件夹数量"
-          value={summary?.totalFolders ?? 0}
-          subtitle="按文件夹粒度隔离授权范围"
-          icon={<Folder className="size-basalt-icon-lg" strokeWidth={1.5} />}
+          trendContent={
+            deniedDelta !== null ? (
+              <>
+                <span
+                  className={`font-medium tabular-nums ${
+                    deniedDelta > 0
+                      ? "text-basalt-danger-solid"
+                      : deniedDelta < 0
+                        ? "text-basalt-success"
+                        : "text-basalt-muted-foreground"
+                  }`}
+                >
+                  {deniedDelta > 0 ? "+" : ""}
+                  {deniedDelta}%
+                </span>
+                <span className="text-basalt-muted-foreground">较前 {days} 天</span>
+              </>
+            ) : undefined
+          }
           loading={loading && !stats}
         />
       </StatGrid>
@@ -132,15 +156,47 @@ export default function DashboardPage() {
               </div>
               <Skeleton variant="block" className="h-basalt-56" />
             </div>
+          ) : (summary?.totalCalls ?? 0) === 0 ? (
+            <LayerCard.Empty
+              icon={
+                <Activity
+                  className="size-basalt-icon-display text-basalt-muted-foreground"
+                  strokeWidth={1.5}
+                />
+              }
+              title={`近 ${days} 天暂无调用`}
+              description="消费方通过 /mcp 访问密钥或后台查看明文后将在此展示趋势"
+            />
           ) : (
             <ChartFrame
               ariaLabel={`近 ${days} 天调用趋势柱状图`}
               size="md"
               summary={`共 ${summary?.totalCalls ?? 0} 次调用，放行 ${summary?.allowedCalls ?? 0} 次，拒绝 ${summary?.deniedCalls ?? 0} 次。`}
+              dataAlternative={
+                <table className="sr-only">
+                  <caption>近 {days} 天每日调用明细</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">日期</th>
+                      <th scope="col">放行</th>
+                      <th scope="col">拒绝</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chartData.map((point) => (
+                      <tr key={point.date}>
+                        <td>{point.date}</td>
+                        <td>{point.allowed}</td>
+                        <td>{point.denied}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              }
               legend={
                 <ChartLegend
                   items={[
-                    { key: "allowed", label: "放行", color: getChartColor(0) },
+                    { key: "allowed", label: "放行", color: getChartColor(2) },
                     { key: "denied", label: "拒绝 / 异常", color: getChartColor(1) },
                   ]}
                 />
@@ -149,11 +205,18 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsBarChart data={chartData}>
                   <CartesianGrid {...GRID_PROPS} />
-                  <XAxis dataKey="label" {...AXIS_CONFIG} />
+                  <XAxis dataKey="label" minTickGap={24} {...AXIS_CONFIG} />
                   <YAxis allowDecimals={false} {...AXIS_CONFIG} />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
+                      const allowedVal = Number(
+                        payload.find((e) => e.dataKey === "allowed")?.value ?? 0,
+                      );
+                      const deniedVal = Number(
+                        payload.find((e) => e.dataKey === "denied")?.value ?? 0,
+                      );
+                      const dayTotal = allowedVal + deniedVal;
                       return (
                         <ChartTooltip>
                           <div className="mb-basalt-space-sm text-basalt-sm font-medium">
@@ -167,6 +230,11 @@ export default function DashboardPage() {
                               color={entry.color}
                             />
                           ))}
+                          <ChartTooltipDivider />
+                          <ChartTooltipSummary
+                            label="合计 / 放行率"
+                            value={`${dayTotal} 次 (${computeAllowRate(allowedVal, dayTotal)})`}
+                          />
                         </ChartTooltip>
                       );
                     }}
@@ -174,7 +242,7 @@ export default function DashboardPage() {
                   <Bar
                     dataKey="allowed"
                     name="allowed"
-                    fill={getChartColor(0)}
+                    fill={getChartColor(2)}
                     radius={[4, 4, 0, 0]}
                     isAnimationActive={false}
                   />
@@ -240,6 +308,20 @@ export default function DashboardPage() {
               <LayerCard.Title>临期与僵尸密钥提醒</LayerCard.Title>
               <LayerCard.Description>30 天内过期或超过 90 天未使用的启用密钥</LayerCard.Description>
             </div>
+            {(expiringCount > 0 || staleCount > 0) && (
+              <div className="flex shrink-0 items-center gap-basalt-space-sm">
+                {expiringCount > 0 && (
+                  <Badge tone="warning" variant="soft" className="tabular-nums">
+                    临期 {expiringCount}
+                  </Badge>
+                )}
+                {staleCount > 0 && (
+                  <Badge tone="neutral" variant="outline" className="tabular-nums">
+                    僵尸 {staleCount}
+                  </Badge>
+                )}
+              </div>
+            )}
           </LayerCard.Header>
           <LayerCard.Body>
             {loading && !stats ? (
@@ -248,8 +330,7 @@ export default function DashboardPage() {
                   <Skeleton key={idx} variant="block" height={48} />
                 ))}
               </div>
-            ) : !stats ||
-              (stats.expiringSoonSecrets.length === 0 && stats.staleSecrets.length === 0) ? (
+            ) : !stats || (expiringCount === 0 && staleCount === 0) ? (
               <LayerCard.Empty title="状态健康" description="暂无临期或长期未用的僵尸密钥" />
             ) : (
               <div className="space-y-basalt-space-lg">

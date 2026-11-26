@@ -16,6 +16,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Field,
   Input,
   Label,
@@ -27,7 +32,17 @@ import {
 import { Banner } from "@nocoo/basalt/components/banner";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Ban, Bot, KeyRound, Pause, Play, RefreshCw, Shield, Trash2 } from "@nocoo/basalt/icons";
+import {
+  Ban,
+  Bot,
+  KeyRound,
+  MoreHorizontal,
+  Pause,
+  Play,
+  RefreshCw,
+  Shield,
+  Trash2,
+} from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ErrorBanner } from "@/components/ErrorBanner";
@@ -227,7 +242,7 @@ export default function ClientsPage() {
     <div className="space-y-basalt-layout-lg">
       <PageHeader
         title="客户端与凭证"
-        description="管理 OAuth 2.1 客户端（Gemini / Claude / Cursor）与无头 Bot Bearer Token，支持按文件夹与单密钥细粒度授权"
+        description="管理 OAuth 2.1 与 Bot Token 消费方，按文件夹和单密钥粒度控制访问权限"
         actions={
           <div className="flex items-center gap-basalt-space-lg">
             <Button
@@ -309,7 +324,7 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 </LayerCard.Header>
-                <LayerCard.Body className="space-y-basalt-layout-sm">
+                <LayerCard.Body>
                   <LayerCard.Well className="p-basalt-card-sm">
                     <DescriptionList columns={2} className="text-basalt-sm">
                       <DescriptionList.Item term="授权范围">
@@ -336,72 +351,73 @@ export default function ClientsPage() {
                       )}
                     </DescriptionList>
                   </LayerCard.Well>
-
-                  <div className="flex flex-wrap items-center justify-end gap-basalt-space-lg">
+                </LayerCard.Body>
+                <LayerCard.Footer>
+                  {client.status !== "revoked" ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(client)}
+                      >
+                        <Shield className="size-basalt-icon" strokeWidth={1.5} />
+                        权限设置
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label={`更多操作 ${client.displayName}`}
+                          >
+                            <MoreHorizontal className="size-basalt-icon" strokeWidth={1.5} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {client.registrationType === "bot_token" && (
+                            <DropdownMenuItem onSelect={() => void rotateBotToken(client)}>
+                              <RefreshCw className="size-basalt-icon" strokeWidth={1.5} />
+                              轮换 Token
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem onSelect={() => void toggleStatus(client)}>
+                            {client.status === "active" ? (
+                              <>
+                                <Pause className="size-basalt-icon" strokeWidth={1.5} />
+                                暂停
+                              </>
+                            ) : (
+                              <>
+                                <Play className="size-basalt-icon" strokeWidth={1.5} />
+                                恢复
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => setRevokingClient(client)}
+                          >
+                            <Ban className="size-basalt-icon" strokeWidth={1.5} />
+                            吊销
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </>
+                  ) : (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="destructive"
                       size="sm"
-                      disabled={client.status === "revoked"}
-                      onClick={() => openEdit(client)}
+                      onClick={() => setDeletingClient(client)}
                     >
-                      <Shield className="size-basalt-icon" strokeWidth={1.5} />
-                      权限设置
+                      <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
+                      删除
                     </Button>
-                    {client.registrationType === "bot_token" && client.status !== "revoked" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void rotateBotToken(client)}
-                      >
-                        <RefreshCw className="size-basalt-icon" strokeWidth={1.5} />
-                        轮换 Token
-                      </Button>
-                    )}
-                    {client.status !== "revoked" && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void toggleStatus(client)}
-                      >
-                        {client.status === "active" ? (
-                          <>
-                            <Pause className="size-basalt-icon" strokeWidth={1.5} />
-                            暂停
-                          </>
-                        ) : (
-                          <>
-                            <Play className="size-basalt-icon" strokeWidth={1.5} />
-                            恢复
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    {client.status !== "revoked" ? (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setRevokingClient(client)}
-                      >
-                        <Ban className="size-basalt-icon" strokeWidth={1.5} />
-                        吊销
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setDeletingClient(client)}
-                      >
-                        <Trash2 className="size-basalt-icon" strokeWidth={1.5} />
-                        删除
-                      </Button>
-                    )}
-                  </div>
-                </LayerCard.Body>
+                  )}
+                </LayerCard.Footer>
               </LayerCard>
             );
           })}
@@ -416,7 +432,7 @@ export default function ClientsPage() {
         <DialogContent size="xl">
           <DialogHeader>
             <DialogTitle>
-              {createForm.type === "bot_token" ? "新建无头 Bot Token" : "新建静态 OAuth 客户端"}
+              {createForm.type === "bot_token" ? "新建 Bot Token" : "新建静态 OAuth 客户端"}
             </DialogTitle>
             <DialogDescription>
               {createForm.type === "bot_token"

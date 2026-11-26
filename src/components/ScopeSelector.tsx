@@ -1,5 +1,7 @@
 import { Badge, Checkbox, Label, LayerCard, ScrollArea, Switch, Text } from "@nocoo/basalt";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { TagBadge } from "@nocoo/basalt/components/tag-badge";
+import { AlertTriangle } from "@nocoo/basalt/icons";
 import { resolveFolderTagColor } from "@/models/format";
 import type { FolderItem } from "@/models/types";
 
@@ -48,39 +50,49 @@ export function ScopeSelector({
 }: ScopeSelectorProps) {
   return (
     <div className="space-y-basalt-layout">
-      <LayerCard.Well className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
-        <div className="space-y-basalt-space-xs">
-          <Label htmlFor={`${idPrefix}-allow-plaintext`} className="text-basalt-base font-medium">
-            允许读取明文密钥（get_secret）
-          </Label>
-          <Text className="text-basalt-sm text-basalt-muted-foreground">
-            关闭后该消费方仅能调用 list_secrets / search_secrets 查看元数据
-          </Text>
+      <LayerCard.Well className="divide-y divide-basalt-border p-0">
+        <div className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
+          <div className="space-y-basalt-space-xs">
+            <Label htmlFor={`${idPrefix}-allow-plaintext`} className="text-basalt-base font-medium">
+              允许读取明文密钥（get_secret）
+            </Label>
+            <Text className="text-basalt-sm text-basalt-muted-foreground">
+              关闭后该消费方仅能调用 list_secrets / search_secrets 查看元数据
+            </Text>
+          </div>
+          <Switch
+            id={`${idPrefix}-allow-plaintext`}
+            checked={allowPlaintextRead}
+            onCheckedChange={onAllowPlaintextReadChange}
+          />
         </div>
-        <Switch
-          id={`${idPrefix}-allow-plaintext`}
-          checked={allowPlaintextRead}
-          onCheckedChange={onAllowPlaintextReadChange}
-        />
+
+        <div className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
+          <div className="space-y-basalt-space-xs">
+            <Label htmlFor={`${idPrefix}-allow-all`} className="text-basalt-base font-medium">
+              授予全部密钥权限（*）
+            </Label>
+            <Text className="text-basalt-sm text-basalt-muted-foreground">
+              开启后可访问所有文件夹及未来新增的全部密钥
+            </Text>
+          </div>
+          <Switch
+            id={`${idPrefix}-allow-all`}
+            checked={allowAll}
+            onCheckedChange={onAllowAllChange}
+          />
+        </div>
       </LayerCard.Well>
 
-      <LayerCard.Well className="flex items-center justify-between gap-basalt-layout p-basalt-card-sm">
-        <div className="space-y-basalt-space-xs">
-          <Label htmlFor={`${idPrefix}-allow-all`} className="text-basalt-base font-medium">
-            授予全部密钥权限（*）
-          </Label>
-          <Text className="text-basalt-sm text-basalt-muted-foreground">
-            开启后可访问所有文件夹及未来新增的全部密钥
-          </Text>
-        </div>
-        <Switch
-          id={`${idPrefix}-allow-all`}
-          checked={allowAll}
-          onCheckedChange={onAllowAllChange}
+      {allowAll ? (
+        <Banner
+          tone="warning"
+          size="sm"
+          icon={<AlertTriangle className="size-basalt-icon-lg" strokeWidth={1.5} />}
+          title="已开启全部密钥访问"
+          description="该消费方将可访问所有文件夹及未来新增的全部启用密钥，建议仅对高信任 Agent 授予此权限。"
         />
-      </LayerCard.Well>
-
-      {!allowAll && (
+      ) : (
         <div className="grid gap-basalt-layout md:grid-cols-2">
           <LayerCard padding="sm" outlined>
             <LayerCard.Header>

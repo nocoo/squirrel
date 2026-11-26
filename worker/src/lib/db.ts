@@ -830,6 +830,7 @@ export async function getDashboardStats(
 ): Promise<DashboardStatsResponse> {
   const clampedDays = Math.min(Math.max(days, 1), 90);
   const sinceIso = new Date(nowMs - clampedDays * 86_400_000).toISOString();
+  const prevSinceIso = new Date(nowMs - clampedDays * 2 * 86_400_000).toISOString();
   const soonIso = new Date(nowMs + 30 * 86_400_000).toISOString();
   const staleCutoffIso = new Date(nowMs - 90 * 86_400_000).toISOString();
 
@@ -838,6 +839,7 @@ export async function getDashboardStats(
     folderCount,
     clientCount,
     auditTotals,
+    prevAuditTotals,
     dailyRows,
     clientRows,
     topSecretRows,
@@ -866,6 +868,16 @@ export async function getDashboardStats(
          WHERE created_at >= ?`,
       )
       .bind(sinceIso)
+      .first<{ total: number; allowed: number | null; denied: number | null }>(),
+    db
+      .prepare(
+        `SELECT COUNT(*) AS total,
+                SUM(CASE WHEN decision = 'allowed' THEN 1 ELSE 0 END) AS allowed,
+                SUM(CASE WHEN decision != 'allowed' THEN 1 ELSE 0 END) AS denied
+         FROM audit_logs
+         WHERE created_at >= ? AND created_at < ?`,
+      )
+      .bind(prevSinceIso, sinceIso)
       .first<{ total: number; allowed: number | null; denied: number | null }>(),
     db
       .prepare(
@@ -979,6 +991,9 @@ export async function getDashboardStats(
       totalCalls: Number(auditTotals?.total ?? 0),
       allowedCalls: Number(auditTotals?.allowed ?? 0),
       deniedCalls: Number(auditTotals?.denied ?? 0),
+      previousTotalCalls: Number(prevAuditTotals?.total ?? 0),
+      previousAllowedCalls: Number(prevAuditTotals?.allowed ?? 0),
+      previousDeniedCalls: Number(prevAuditTotals?.denied ?? 0),
       expiringSoonCount: Number(secretCounts?.expiring_soon ?? 0),
     },
     dailySeries,
