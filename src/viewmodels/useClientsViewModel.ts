@@ -132,6 +132,14 @@ export function useClientsViewModel() {
     [reload],
   );
 
+  const deleteClient = useCallback(
+    async (clientId: string) => {
+      await api.deleteClient(clientId);
+      await reload();
+    },
+    [reload],
+  );
+
   const clearIssuedCredential = useCallback(() => {
     setIssuedCredential(null);
   }, []);
@@ -149,6 +157,7 @@ export function useClientsViewModel() {
     updatePolicy,
     rotateBotToken,
     revokeClient,
+    deleteClient,
     reload,
   };
 }

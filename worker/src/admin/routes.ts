@@ -15,6 +15,7 @@ import {
 import {
   createFolder,
   createSecret,
+  deleteClientPolicy,
   deleteFolder,
   deleteSecret,
   getClientPolicy,
@@ -506,6 +507,19 @@ adminRoutes.post("/clients/:clientId/revoke", async (c) => {
   });
 
   return c.json({ item: updated });
+});
+
+adminRoutes.delete("/clients/:clientId", async (c) => {
+  const clientId = c.req.param("clientId");
+  const existing = await getClientPolicy(c.env.DB, clientId);
+  if (!existing) {
+    return c.json({ error: "Client not found" }, 404);
+  }
+  if (existing.status !== "revoked") {
+    return c.json({ error: "Only revoked clients can be deleted" }, 400);
+  }
+  await deleteClientPolicy(c.env.DB, clientId);
+  return c.json({ ok: true });
 });
 
 // ─── OAuth Consent Transactions ──────────────────────────────────────────────

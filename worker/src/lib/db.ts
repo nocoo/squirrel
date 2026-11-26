@@ -694,6 +694,14 @@ export async function updateClientPolicy(
   return getClientPolicy(db, clientId);
 }
 
+export async function deleteClientPolicy(db: D1Database, clientId: string): Promise<boolean> {
+  const res = await db
+    .prepare("DELETE FROM oauth_client_policies WHERE client_id = ?")
+    .bind(clientId)
+    .run();
+  return (res.meta.changes ?? 0) > 0;
+}
+
 export async function touchClientUsage(
   db: D1Database,
   clientId: string,

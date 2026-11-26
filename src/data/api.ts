@@ -199,6 +199,11 @@ export const api = {
       { method: "POST", body: JSON.stringify({}) },
     ),
 
+  deleteClient: (clientId: string) =>
+    requestJson<{ ok: true }>(`/api/admin/clients/${encodeURIComponent(clientId)}`, {
+      method: "DELETE",
+    }),
+
   listLogs: (params?: {
     clientId?: string;
     secretId?: string;

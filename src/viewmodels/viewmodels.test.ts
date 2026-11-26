@@ -29,6 +29,7 @@ vi.mock("@/data/api", () => ({
     updateClient: vi.fn(),
     rotateBotToken: vi.fn(),
     revokeClient: vi.fn(),
+    deleteClient: vi.fn(),
     listLogs: vi.fn(),
     getAuthTx: vi.fn(),
     decideAuthTx: vi.fn(),
@@ -290,6 +291,7 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
     vi.mocked(api.updateClient).mockResolvedValue({ item: CLIENT_1 });
     vi.mocked(api.rotateBotToken).mockResolvedValue({ item: CLIENT_1, token: "sq_live_rot" });
     vi.mocked(api.revokeClient).mockResolvedValue({ item: { ...CLIENT_1, status: "revoked" } });
+    vi.mocked(api.deleteClient).mockResolvedValue({ ok: true });
 
     const { result } = renderHook(() => useClientsViewModel());
     await waitFor(() => expect(result.current.loading).toBe(false));
@@ -323,7 +325,9 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
       await result.current.updatePolicy("bot_1", { status: "suspended" });
       await result.current.rotateBotToken(CLIENT_1);
       await result.current.revokeClient("bot_1");
+      await result.current.deleteClient("bot_1");
     });
+    expect(api.deleteClient).toHaveBeenCalledWith("bot_1");
     act(() => result.current.clearIssuedCredential());
     expect(result.current.issuedCredential).toBeNull();
   });

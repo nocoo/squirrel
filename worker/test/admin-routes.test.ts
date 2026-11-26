@@ -188,7 +188,11 @@ describe("adminRoutes L2 coverage", () => {
     expect(rotRes.status).toBe(200);
     expect((await req("/clients/static_cid_1/rotate-token", "POST", {})).status).toBe(400);
 
+    expect((await req(`/clients/${botData.item.clientId}`, "DELETE")).status).toBe(400);
+    expect((await req("/clients/missing", "DELETE")).status).toBe(404);
     expect((await req(`/clients/${botData.item.clientId}/revoke`, "POST", {})).status).toBe(200);
+    expect((await req(`/clients/${botData.item.clientId}`, "DELETE")).status).toBe(200);
+    expect((await req(`/clients/${botData.item.clientId}`, "DELETE")).status).toBe(404);
     expect((await req("/clients/static_cid_1/revoke", "POST", {})).status).toBe(200);
     expect((await req("/clients/missing/revoke", "POST", {})).status).toBe(404);
     expect((await req("/clients")).status).toBe(200);

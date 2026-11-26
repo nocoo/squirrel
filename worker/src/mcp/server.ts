@@ -5,7 +5,7 @@ import { z } from "zod";
 import pkg from "../../../package.json";
 import { decryptSecret } from "../lib/crypto";
 import { getSecretByIdOrSlug, listSecrets, recordSecretRead } from "../lib/db";
-import { getMasterKey } from "../lib/env";
+import { getMasterKey, getPublicOrigin } from "../lib/env";
 import type { McpCallerContext, WorkerBindings } from "../types";
 import {
   evaluateSecretRead,
@@ -35,11 +35,36 @@ export function buildMcpServer(
   env: WorkerBindings,
   caller: McpCallerContext,
   ctx?: Pick<ExecutionContext, "waitUntil">,
+  originOverride?: string,
 ): McpServer {
+  const origin = (originOverride || env.PUBLIC_ORIGIN || "https://squirrel.hexly.ai").replace(
+    /\/+$/,
+    "",
+  );
   const server = new McpServer(
     {
-      name: "squirrel-mcp",
+      name: "Squirrel MCP",
+      title: "Squirrel MCP",
       version: pkg.version,
+      description: "Personal API key and token vault MCP server",
+      websiteUrl: origin,
+      icons: [
+        {
+          src: `${origin}/apple-touch-icon.png`,
+          mimeType: "image/png",
+          sizes: ["180x180"],
+        },
+        {
+          src: `${origin}/logo-80.png`,
+          mimeType: "image/png",
+          sizes: ["80x80"],
+        },
+        {
+          src: `${origin}/logo-48.png`,
+          mimeType: "image/png",
+          sizes: ["48x48"],
+        },
+      ],
     },
     {
       instructions: SERVER_INSTRUCTIONS,
@@ -356,7 +381,7 @@ export async function handleMcpRequest(
     sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
-  const server = buildMcpServer(env, caller, ctx);
+  const server = buildMcpServer(env, caller, ctx, getPublicOrigin(request, env));
   await server.connect(transport);
   try {
     return await transport.handleRequest(request);

@@ -4,6 +4,7 @@ import { resolveBotBearerToken } from "../src/auth/bot-token";
 import {
   cfAccessMiddleware,
   enforceOriginMiddleware,
+  isLocalBypassAllowed,
   normalizeAccessTeamOrigin,
 } from "../src/auth/cf-access";
 import { dcrClientRegistrationCheck } from "../src/auth/dcr-guard";
@@ -69,6 +70,19 @@ describe("DCR guard & CF Access middleware", () => {
         h.env,
       )?.description,
     ).toContain("HTTPS");
+    expect(dcrClientRegistrationCheck({ redirect_uris: [] }, h.env)?.status).toBe(400);
+    expect(
+      dcrClientRegistrationCheck(
+        { redirect_uris: Array.from({ length: 21 }, (_, i) => `https://localhost/${i}`) },
+        h.env,
+      )?.status,
+    ).toBe(400);
+    expect(
+      dcrClientRegistrationCheck(
+        { redirect_uris: [`https://localhost/${"a".repeat(2050)}`] },
+        h.env,
+      )?.status,
+    ).toBe(400);
   });
 
   it("normalizes CF Access team domain and enforces JWT/Origin rules", async () => {
@@ -83,6 +97,38 @@ describe("DCR guard & CF Access middleware", () => {
       CF_ACCESS_AUD: "aud_test",
     });
     cleanups.push(h.close);
+
+    expect(isLocalBypassAllowed(new Request("http://127.0.0.1/admin"), h.env)).toBe(false);
+    expect(
+      isLocalBypassAllowed(new Request("http://127.0.0.1/admin"), {
+        ...h.env,
+        ENVIRONMENT: "local",
+        LOCAL_USER_EMAIL: "",
+      }),
+    ).toBe(false);
+    expect(
+      isLocalBypassAllowed(
+        new Request("https://squirrel.dev.hexly.ai/admin", {
+          headers: { "cf-connecting-ip": "127.0.0.1" },
+        }),
+        { ...h.env, ENVIRONMENT: "local", LOCAL_USER_EMAIL: "dev@test" },
+      ),
+    ).toBe(true);
+    expect(
+      isLocalBypassAllowed(
+        new Request("https://squirrel.dev.hexly.ai/admin", {
+          headers: { "cf-connecting-ip": "203.0.113.10" },
+        }),
+        { ...h.env, ENVIRONMENT: "local", LOCAL_USER_EMAIL: "dev@test" },
+      ),
+    ).toBe(false);
+    expect(
+      isLocalBypassAllowed(new Request("https://squirrel.test/admin"), {
+        ...h.env,
+        ENVIRONMENT: "test",
+        LOCAL_USER_EMAIL: "test@test",
+      }),
+    ).toBe(true);
 
     const app = new Hono<{ Bindings: WorkerBindings; Variables: { adminEmail: string } }>();
     app.use("/api/*", cfAccessMiddleware);
@@ -324,6 +370,12 @@ describe("Bot bearer tokens & MCP tools", () => {
       return res.json() as Promise<{
         result?: {
           protocolVersion?: string;
+          serverInfo?: {
+            name?: string;
+            title?: string;
+            websiteUrl?: string;
+            icons?: { src: string; mimeType?: string; sizes?: string[] }[];
+          };
           instructions?: string;
           tools?: { name: string }[];
           isError?: boolean;
@@ -343,6 +395,20 @@ describe("Bot bearer tokens & MCP tools", () => {
       },
     });
     expect(init.result?.protocolVersion).toBe("2025-11-25");
+    expect(init.result?.serverInfo).toMatchObject({
+      name: "Squirrel MCP",
+      title: "Squirrel MCP",
+      websiteUrl: "https://squirrel.test",
+      icons: [
+        {
+          src: "https://squirrel.test/apple-touch-icon.png",
+          mimeType: "image/png",
+          sizes: ["180x180"],
+        },
+        { src: "https://squirrel.test/logo-80.png", mimeType: "image/png", sizes: ["80x80"] },
+        { src: "https://squirrel.test/logo-48.png", mimeType: "image/png", sizes: ["48x48"] },
+      ],
+    });
     expect(init.result?.instructions).toContain("search_secrets");
 
     const listedTools = await callRpc({ jsonrpc: "2.0", id: 2, method: "tools/list", params: {} });

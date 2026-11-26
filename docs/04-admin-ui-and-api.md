@@ -14,22 +14,22 @@
 
 所有 `/api/admin/*` 接口均受 `cfAccessMiddleware` 与 `enforceOriginMiddleware` 保护（实现见 [routes.ts](file:///Users/nocoo/workspace/personal/squirrel/worker/src/admin/routes.ts)）：
 
-| 路径                                        | 方法             | 说明                                                  |
-| :------------------------------------------ | :--------------- | :---------------------------------------------------- |
-| `/api/admin/me`                             | `GET`            | 当前管理员邮箱与运行环境                              |
-| `/api/admin/stats?days=7`                   | `GET`            | 概览统计、每日趋势、高频/僵尸/临期榜单                |
-| `/api/admin/folders`                        | `GET` / `POST`   | 文件夹列表（含密钥计数）与新建                        |
-| `/api/admin/folders/:id`                    | `PUT` / `DELETE` | 更新或删除文件夹（密钥置未分类并清理策略引用）        |
-| `/api/admin/secrets`                        | `GET` / `POST`   | 密钥元数据检索与加密入库                              |
-| `/api/admin/secrets/:id/reveal`             | `POST`           | 管理员解密查看明文并写入 `admin_reveal` 审计日志      |
-| `/api/admin/secrets/:id`                    | `PUT` / `DELETE` | 更新元数据/轮换密钥值或删除密钥                       |
-| `/api/admin/clients`                        | `GET` / `POST`   | 消费方列表、新建 `bot_token` 或 `static_oauth` 客户端 |
-| `/api/admin/clients/:clientId`              | `PATCH`          | 实时修改别名、文件夹/单密钥权限、明文开关与状态       |
-| `/api/admin/clients/:clientId/rotate-token` | `POST`           | 轮换 Bot Token（旧 Token 立即失效）                   |
-| `/api/admin/clients/:clientId/revoke`       | `POST`           | 永久吊销客户端并清理 OAuth 注册信息                   |
-| `/api/admin/oauth/tx/:txId`                 | `GET`            | 获取待确认 OAuth 授权事务详情                         |
-| `/api/admin/oauth/tx/:txId/decision`        | `POST`           | 提交批准或拒绝并换取带 `state`/`iss` 的 `redirectTo`  |
-| `/api/admin/logs`                           | `GET`            | 分页查询审计日志                                      |
+| 路径                                        | 方法               | 说明                                                  |
+| :------------------------------------------ | :----------------- | :---------------------------------------------------- |
+| `/api/admin/me`                             | `GET`              | 当前管理员邮箱与运行环境                              |
+| `/api/admin/stats?days=7`                   | `GET`              | 概览统计、每日趋势、高频/僵尸/临期榜单                |
+| `/api/admin/folders`                        | `GET` / `POST`     | 文件夹列表（含密钥计数）与新建                        |
+| `/api/admin/folders/:id`                    | `PUT` / `DELETE`   | 更新或删除文件夹（密钥置未分类并清理策略引用）        |
+| `/api/admin/secrets`                        | `GET` / `POST`     | 密钥元数据检索与加密入库                              |
+| `/api/admin/secrets/:id/reveal`             | `POST`             | 管理员解密查看明文并写入 `admin_reveal` 审计日志      |
+| `/api/admin/secrets/:id`                    | `PUT` / `DELETE`   | 更新元数据/轮换密钥值或删除密钥                       |
+| `/api/admin/clients`                        | `GET` / `POST`     | 消费方列表、新建 `bot_token` 或 `static_oauth` 客户端 |
+| `/api/admin/clients/:clientId`              | `PATCH` / `DELETE` | 实时修改策略与状态，或删除已吊销客户端记录            |
+| `/api/admin/clients/:clientId/rotate-token` | `POST`             | 轮换 Bot Token（旧 Token 立即失效）                   |
+| `/api/admin/clients/:clientId/revoke`       | `POST`             | 永久吊销客户端并清理 OAuth 注册信息                   |
+| `/api/admin/oauth/tx/:txId`                 | `GET`              | 获取待确认 OAuth 授权事务详情                         |
+| `/api/admin/oauth/tx/:txId/decision`        | `POST`             | 提交批准或拒绝并换取带 `state`/`iss` 的 `redirectTo`  |
+| `/api/admin/logs`                           | `GET`              | 分页查询审计日志                                      |
 
 免鉴权健康接口：
 

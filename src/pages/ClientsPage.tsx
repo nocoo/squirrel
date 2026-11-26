@@ -31,7 +31,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@nocoo/basalt/components/select";
-import { Ban, Bot, Copy, KeyRound, Pause, Play, RefreshCw, Shield } from "@nocoo/basalt/icons";
+import {
+  Ban,
+  Bot,
+  Copy,
+  KeyRound,
+  Pause,
+  Play,
+  RefreshCw,
+  Shield,
+  Trash2,
+} from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { ScopeSelector } from "@/components/ScopeSelector";
 import {
@@ -93,6 +103,7 @@ export default function ClientsPage() {
     updatePolicy,
     rotateBotToken,
     revokeClient,
+    deleteClient,
     reload,
   } = useClientsViewModel();
 
@@ -104,6 +115,7 @@ export default function ClientsPage() {
   const [editSaving, setEditSaving] = useState(false);
 
   const [revokingClient, setRevokingClient] = useState<ClientPolicyItem | null>(null);
+  const [deletingClient, setDeletingClient] = useState<ClientPolicyItem | null>(null);
 
   const openCreate = (type: "bot_token" | "static_oauth") => {
     setCreateForm({ ...INITIAL_CREATE_FORM, open: true, type });
@@ -352,7 +364,7 @@ export default function ClientsPage() {
                         )}
                       </Button>
                     )}
-                    {client.status !== "revoked" && (
+                    {client.status !== "revoked" ? (
                       <Button
                         type="button"
                         variant="destructive"
@@ -361,6 +373,16 @@ export default function ClientsPage() {
                       >
                         <Ban className="h-3.5 w-3.5" strokeWidth={1.5} />
                         吊销
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeletingClient(client)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                        删除
                       </Button>
                     )}
                   </div>
@@ -667,6 +689,39 @@ export default function ClientsPage() {
               }}
             >
               确认吊销
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Revoked Client Confirm */}
+      <AlertDialog
+        open={deletingClient !== null}
+        onOpenChange={(open) => !open && setDeletingClient(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除已吊销凭证「{deletingClient?.displayName}」？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后该消费方策略将从列表中移除，历史审计日志仍会保留 90 天。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deletingClient) return;
+                try {
+                  await deleteClient(deletingClient.clientId);
+                  toast.success("已删除凭证记录");
+                } catch (err) {
+                  toast.danger(err instanceof Error ? err.message : "删除失败");
+                } finally {
+                  setDeletingClient(null);
+                }
+              }}
+            >
+              确认删除
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
