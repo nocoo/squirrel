@@ -13,7 +13,7 @@ bun run dev             # 启动 Vite + Worker 本地服务 (https://squirrel.de
 - 每日开发使用 `.wrangler/state`，默认本地身份 `developer@example.test`。
 - 禁止在未授权时使用生产环境或本地状态运行测试。
 
-## 2. 质量体系（对接 `base-ci v2026.19`）
+## 2. 质量体系（对接 `base-ci v2026.20`）
 
 项目采用 12 槽位质量门禁（定义见 [.github/workflows/quality-slots.yml](file:///Users/nocoo/workspace/personal/squirrel/.github/workflows/quality-slots.yml)）：
 

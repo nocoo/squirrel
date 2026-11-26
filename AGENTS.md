@@ -35,7 +35,7 @@ bun run deploy:check          # P1: build + wrangler deploy --dry-run
 
 ## Quality & Local Gates
 
-Follows `system1-quality` and `nocoo/base-ci@98fc023423f82b010f17e0ebbc9dd580fe68736a` (`v2026.19`); `quality / Z1: Gate` is the required status check on `main`.
+Follows `system1-quality` and `nocoo/base-ci@e5876a604547b1ddb0916f16dd841a4f832609a0` (`v2026.20`); `quality / Z1: Gate` is the required status check on `main`.
 
 - **Coverage**: `L1` enforces >=80% on `src/{models,viewmodels,lib,hooks}` (`vitest.config.ts`); `L2` enforces >=80% on `worker/src` (`worker/vitest.config.ts`).
 - **Local hooks**: `.husky/pre-commit` runs staged `gitleaks` (`G1`) then parallel `S1`/`S2`/`L1`/`L2`/`L3` inside a `git checkout-index` snapshot; `.husky/pre-push` runs `B1`/`S2`/`L1`/`L2`/`L3`/`typecheck:worker`/`G2` (`osv-scanner`).
