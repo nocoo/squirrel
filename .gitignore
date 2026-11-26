@@ -36,3 +36,4 @@ yarn-error.log*
 **/.wrangler/
 **/node_modules/
 .superset/
+worker/worker-configuration.d.ts
