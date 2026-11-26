@@ -431,7 +431,7 @@ export default function SecretsPage() {
       {error && <ErrorBanner message={error} onRetry={() => void reload()} />}
 
       <LayerCard padding="none">
-        <div className="grid min-w-0 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="grid min-w-0 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
           <aside
             aria-label="文件夹筛选"
             className="min-w-0 border-b border-basalt-border p-basalt-card-sm lg:border-r lg:border-b-0"
@@ -612,7 +612,7 @@ export default function SecretsPage() {
               )
             ) : (
               <div className="w-full overflow-x-auto">
-                <Table>
+                <Table className="[&_td]:px-basalt-space-lg [&_th]:px-basalt-space-lg [&_td:first-child]:ps-basalt-table-x [&_th:first-child]:ps-basalt-table-x [&_td:last-child]:pe-basalt-table-x [&_th:last-child]:pe-basalt-table-x">
                   <TableHeader>
                     <TableRow>
                       <TableHead aria-sort={ariaSortFor(sortKey, sortDir, "name")}>
@@ -663,8 +663,8 @@ export default function SecretsPage() {
                       return (
                         <TableRow key={item.id}>
                           <TableCell>
-                            <div className="max-w-44 truncate font-medium">{item.name}</div>
-                            <div className="max-w-44 truncate font-mono text-basalt-sm text-basalt-muted-foreground">
+                            <div className="max-w-40 truncate font-medium">{item.name}</div>
+                            <div className="max-w-40 truncate font-mono text-basalt-sm text-basalt-muted-foreground">
                               {item.slug}
                             </div>
                           </TableCell>
@@ -692,7 +692,7 @@ export default function SecretsPage() {
                             {item.maskedPreview}
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-nowrap items-center gap-basalt-space-md">
+                            <div className="flex flex-col items-start gap-basalt-space-xs">
                               <Badge
                                 tone={item.isEnabled ? "success" : "neutral"}
                                 variant="soft"
