@@ -43,6 +43,7 @@ import {
   Trash2,
 } from "@nocoo/basalt/icons";
 import { useState } from "react";
+import { DialogBody, DialogForm } from "@/components/DialogForm";
 import { ScopeSelector } from "@/components/ScopeSelector";
 import {
   formatDateTime,
@@ -409,7 +410,7 @@ export default function ClientsPage() {
                 : "适用于不支持 DCR 的客户端或在 Gemini Developer Mode 中手动填写 client_id / client_secret。"}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateSubmit} className="space-y-4">
+          <DialogForm onSubmit={handleCreateSubmit}>
             {createError && (
               <Text className="text-basalt-sm text-basalt-destructive">{createError}</Text>
             )}
@@ -515,7 +516,7 @@ export default function ClientsPage() {
                 {createSaving ? "创建中..." : "创建凭证"}
               </Button>
             </DialogFooter>
-          </form>
+          </DialogForm>
         </DialogContent>
       </Dialog>
 
@@ -529,7 +530,7 @@ export default function ClientsPage() {
             </DialogDescription>
           </DialogHeader>
           {editForm && (
-            <form onSubmit={handleEditSubmit} className="space-y-4">
+            <DialogForm onSubmit={handleEditSubmit}>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-client-name">消费方名称</Label>
                 <Input
@@ -572,7 +573,7 @@ export default function ClientsPage() {
                   {editSaving ? "保存中..." : "保存策略"}
                 </Button>
               </DialogFooter>
-            </form>
+            </DialogForm>
           )}
         </DialogContent>
       </Dialog>
@@ -590,7 +591,7 @@ export default function ClientsPage() {
             </DialogDescription>
           </DialogHeader>
           {issuedCredential && (
-            <div className="space-y-3">
+            <DialogBody>
               <Banner
                 tone="warning"
                 size="sm"
@@ -651,7 +652,7 @@ export default function ClientsPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </DialogBody>
           )}
           <DialogFooter>
             <Button type="button" onClick={clearIssuedCredential}>

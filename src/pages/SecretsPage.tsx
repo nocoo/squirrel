@@ -43,6 +43,7 @@ import {
 import { TagBadge } from "@nocoo/basalt/components/tag-badge";
 import { Copy, Eye, Folder, FolderPlus, Pencil, Plus, Search, Trash2 } from "@nocoo/basalt/icons";
 import { useState } from "react";
+import { DialogBody, DialogForm } from "@/components/DialogForm";
 import {
   FOLDER_COLOR_OPTIONS,
   formatDateTime,
@@ -544,7 +545,7 @@ export default function SecretsPage() {
               通过文件夹组织凭证，方便为 OAuth 客户端或 Bot Token 一键批量授权。
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSaveFolder} className="space-y-4">
+          <DialogForm onSubmit={handleSaveFolder}>
             {folderError && (
               <Text className="text-basalt-sm text-basalt-destructive">{folderError}</Text>
             )}
@@ -612,7 +613,7 @@ export default function SecretsPage() {
                 {folderSaving ? "保存中..." : "保存"}
               </Button>
             </DialogFooter>
-          </form>
+          </DialogForm>
         </DialogContent>
       </Dialog>
 
@@ -625,7 +626,7 @@ export default function SecretsPage() {
               明文将使用服务端 AES-256-GCM 密钥加密存储，前端不缓存明文。
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSaveSecret} className="space-y-4">
+          <DialogForm onSubmit={handleSaveSecret}>
             {secretError && (
               <Text className="text-basalt-sm text-basalt-destructive">{secretError}</Text>
             )}
@@ -774,7 +775,7 @@ export default function SecretsPage() {
                 {secretSaving ? "保存中..." : "保存"}
               </Button>
             </DialogFooter>
-          </form>
+          </DialogForm>
         </DialogContent>
       </Dialog>
 
@@ -788,14 +789,14 @@ export default function SecretsPage() {
             </DialogDescription>
           </DialogHeader>
           {revealed && (
-            <div className="space-y-3">
+            <DialogBody>
               <Text className="font-mono text-basalt-sm text-basalt-muted-foreground">
                 Slug: {revealed.slug}
               </Text>
               <LayerCard.Well className="break-all p-3 font-mono text-basalt-md select-all">
                 {revealed.value}
               </LayerCard.Well>
-            </div>
+            </DialogBody>
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={clearRevealed}>
