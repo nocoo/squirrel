@@ -31,11 +31,11 @@ bun run deploy:check          # P1: build + wrangler deploy --dry-run
 - Secret plaintext is encrypted with AES-256-GCM (`MASTER_KEY` Worker secret in prod, `secret.id` as AAD, random 12-byte IV); bot tokens (`sq_live_...`) are stored only as SHA-256 hashes.
 - Keep `LOCAL_USER_EMAIL` empty and `workers_dev: false` / `preview_urls: false` in `wrangler.jsonc` production config; retain `squirrel-db` (`47120ece-5886-42a6-9382-72b3d907fcda`) and `OAUTH_KV` (`574ee7f1a325425d82da165712ea7427`).
 - Cron trigger (`0 3 * * *`) runs `purgeExpiredAuditLogs(env.DB, 90)` and `provider.purgeExpiredData(env)`.
-- `main` push CI success triggers prod deploy (`.github/workflows/release.yml`). Manual deploys, prod D1 migrations, and secret rotation require explicit authorization.
+- `main` push CI success triggers `D1`–`D5` prod Worker deploy in [.github/workflows/pipeline.yml](.github/workflows/pipeline.yml) (`workflow_dispatch` requires `deploy=true`), reusing `B1` (`b1-build`). Manual deploys, prod D1 migrations, and secret rotation require explicit authorization.
 
 ## Quality & Local Gates
 
-Follows `system1-quality` and `nocoo/base-ci@e5876a604547b1ddb0916f16dd841a4f832609a0` (`v2026.20`); `quality / Z1: Gate` is the required status check on `main`.
+Follows `system1-quality` and `nocoo/base-ci@3703a073693d598159e87f77f99587e586c14cfe` (`v2026.24`) across [.github/workflows/pipeline.yml](.github/workflows/pipeline.yml) and [.github/workflows/quality-slots.yml](.github/workflows/quality-slots.yml); `quality / Z1: Gate` is the required status check on `main`.
 
 - **Coverage**: `L1` enforces >=80% on `src/{models,viewmodels,lib,hooks}` (`vitest.config.ts`); `L2` enforces >=80% on `worker/src` (`worker/vitest.config.ts`).
 - **Local hooks**: `.husky/pre-commit` runs staged `gitleaks` (`G1`) then parallel `S1`/`S2`/`L1`/`L2`/`L3` inside a `git checkout-index` snapshot; `.husky/pre-push` runs `B1`/`S2`/`L1`/`L2`/`L3`/`typecheck:worker`/`G2` (`osv-scanner`).
