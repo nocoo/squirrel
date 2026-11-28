@@ -292,6 +292,17 @@ describe("D1 repository & folder/secret ACL", () => {
       ok: false,
       errorCode: "CLIENT_INACTIVE",
     });
+    expect(
+      evaluateSecretRead(
+        { ...basePolicy, expiresAt: "2026-11-20T00:00:00.000Z" },
+        sInFolder,
+        true,
+        nowIso,
+      ),
+    ).toMatchObject({
+      ok: false,
+      errorCode: "CLIENT_INACTIVE",
+    });
     expect(evaluateSecretRead(basePolicy, null, true, nowIso)).toMatchObject({
       ok: false,
       decision: "not_found",

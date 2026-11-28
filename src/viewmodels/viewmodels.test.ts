@@ -107,20 +107,28 @@ beforeEach(() => {
 describe("useIsMobile", () => {
   it("tracks matchMedia changes", () => {
     let listener: (() => void) | undefined;
+    const mql = {
+      matches: false,
+      addEventListener: (_: string, cb: () => void) => {
+        listener = cb;
+      },
+      removeEventListener: vi.fn(),
+    };
     Object.defineProperty(window, "matchMedia", {
       writable: true,
-      value: vi.fn().mockImplementation(() => ({
-        matches: false,
-        addEventListener: (_: string, cb: () => void) => {
-          listener = cb;
-        },
-        removeEventListener: vi.fn(),
-      })),
+      value: vi.fn().mockImplementation(() => mql),
     });
 
-    const { result } = renderHook(() => useIsMobile());
+    const { result, unmount } = renderHook(() => useIsMobile());
     expect(result.current).toBe(false);
     expect(listener).toBeDefined();
+
+    mql.matches = true;
+    act(() => listener?.());
+    expect(result.current).toBe(true);
+
+    unmount();
+    expect(mql.removeEventListener).toHaveBeenCalled();
   });
 });
 
@@ -294,6 +302,25 @@ describe("useSecretsViewModel", () => {
       await result.current.removeSecret("sec_1");
     });
     expect(result.current.selectedFolder).toBe("all");
+
+    // Sorting with non-null lastUsedAt & error state on reload
+    vi.mocked(api.listSecrets).mockResolvedValueOnce({
+      items: [
+        { ...SECRET_1, lastUsedAt: "2026-11-25T00:00:00Z", useCount: 1 },
+        { ...SECRET_2, lastUsedAt: "2026-11-26T00:00:00Z", useCount: 5 },
+      ],
+    });
+    await act(async () => {
+      await result.current.reload();
+    });
+    act(() => result.current.toggleSort("lastUsedAt"));
+    expect(result.current.filteredSecrets.map((s) => s.id)).toEqual(["sec_2", "sec_1"]);
+
+    vi.mocked(api.listFolders).mockRejectedValueOnce(new Error("vault offline"));
+    await act(async () => {
+      await result.current.reload();
+    });
+    expect(result.current.error).toBe("vault offline");
   });
 });
 
@@ -353,10 +380,16 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
     expect(api.deleteClient).toHaveBeenCalledWith("bot_1");
     act(() => result.current.clearIssuedCredential());
     expect(result.current.issuedCredential).toBeNull();
+
+    vi.mocked(api.listClients).mockRejectedValueOnce(new Error("clients failed"));
+    await act(async () => {
+      await result.current.reload();
+    });
+    expect(result.current.error).toBe("clients failed");
   });
 
   it("loads and filters paginated audit logs", async () => {
-    vi.mocked(api.listClients).mockResolvedValue({ items: [CLIENT_1] });
+    vi.mocked(api.listClients).mockRejectedValueOnce(new Error("clients optional"));
     vi.mocked(api.listLogs).mockResolvedValue({
       items: [
         {
@@ -384,6 +417,7 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.totalPages).toBe(2);
     expect(result.current.hasActiveFilters).toBe(true);
+    expect(result.current.clients).toEqual([]);
 
     act(() => result.current.setPage(2));
     act(() => result.current.setClientFilter("bot_1"));
@@ -396,12 +430,23 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
     expect(result.current.decisionFilter).toBe("all");
     expect(result.current.toolFilter).toBe("all");
     await waitFor(() => expect(api.listLogs).toHaveBeenCalled());
+
+    vi.mocked(api.listLogs).mockRejectedValueOnce(new Error("logs query failed"));
+    await act(async () => {
+      await result.current.reload();
+    });
+    expect(result.current.error).toBe("logs query failed");
   });
 
   it("loads authorize transaction and submits approve/deny", async () => {
     const missing = renderHook(() => useAuthorizeViewModel(null));
     await waitFor(() => expect(missing.result.current.loading).toBe(false));
     expect(missing.result.current.error).toContain("tx");
+
+    vi.mocked(api.getAuthTx).mockRejectedValueOnce(new Error("tx expired"));
+    const failedTx = renderHook(() => useAuthorizeViewModel("tx_expired"));
+    await waitFor(() => expect(failedTx.result.current.loading).toBe(false));
+    expect(failedTx.result.current.error).toBe("tx expired");
 
     vi.mocked(api.getAuthTx).mockResolvedValue({
       txId: "tx_1",
@@ -412,7 +457,12 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
       redirectHost: "oauth-redirect.googleusercontent.com",
       redirectIsLoopback: false,
       scopes: ["secrets:list", "secrets:read"],
-      existingPolicy: null,
+      existingPolicy: {
+        ...CLIENT_1,
+        displayName: "Gemini Existing",
+        allowAll: true,
+        allowPlaintextRead: false,
+      },
       folders: [FOLDER_1],
       secrets: [],
     });
@@ -422,13 +472,29 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
 
     const { result } = renderHook(() => useAuthorizeViewModel("tx_1"));
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.displayName).toBe("Gemini");
+    expect(result.current.displayName).toBe("Gemini Existing");
+    expect(result.current.allowAll).toBe(true);
 
+    act(() => result.current.setDisplayName("   "));
     let redirect: string | null = null;
     await act(async () => {
       redirect = await result.current.approve();
     });
+    expect(redirect).toBeNull();
+    expect(result.current.error).toBe("请填写消费方名称");
+
+    act(() => result.current.setDisplayName("Gemini"));
+    await act(async () => {
+      redirect = await result.current.approve();
+    });
     expect(redirect).toContain("code=abc");
+
+    vi.mocked(api.decideAuthTx).mockRejectedValueOnce(new Error("approve failed"));
+    await act(async () => {
+      redirect = await result.current.approve();
+    });
+    expect(redirect).toBeNull();
+    expect(result.current.error).toBe("approve failed");
 
     await act(async () => {
       redirect = await result.current.deny();
@@ -437,5 +503,12 @@ describe("useClientsViewModel & useAuditLogsViewModel & useAuthorizeViewModel", 
       decision: "deny",
       csrfToken: "csrf_1",
     });
+
+    vi.mocked(api.decideAuthTx).mockRejectedValueOnce(new Error("deny failed"));
+    await act(async () => {
+      redirect = await result.current.deny();
+    });
+    expect(redirect).toBeNull();
+    expect(result.current.error).toBe("deny failed");
   });
 });

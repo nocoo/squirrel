@@ -192,5 +192,72 @@ describe("authorize handlers L2", () => {
     expect(((await denyRes.json()) as { redirectTo: string }).redirectTo).toContain(
       "error=access_denied",
     );
+
+    // Invalid JSON / invalid payload on decision
+    expect(
+      (
+        await app.fetch(
+          new Request(`https://squirrel.test/api/admin/oauth/tx/${txId2}/decision`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{not-json",
+          }),
+          h.env,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.fetch(
+          new Request(`https://squirrel.test/api/admin/oauth/tx/${txId2}/decision`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision: "unknown" }),
+          }),
+          h.env,
+        )
+      ).status,
+    ).toBe(400);
+
+    // Missing OAUTH_PROVIDER & generic parseAuthRequest Error
+    const noProviderApp = new Hono<{
+      Bindings: WorkerBindings;
+      Variables: { adminEmail: string };
+    }>();
+    noProviderApp.use("*", async (c, next) => {
+      c.set("adminEmail", "admin@test.local");
+      return next();
+    });
+    noProviderApp.get("/authorize", handleAuthorizeGet);
+    noProviderApp.post("/api/admin/oauth/tx/:txId/decision", handleAuthTxDecision);
+
+    expect(
+      (
+        await noProviderApp.fetch(new Request("https://squirrel.test/authorize"), {
+          ...h.env,
+          OAUTH_PROVIDER: undefined,
+        })
+      ).status,
+    ).toBe(500);
+    expect(
+      (
+        await noProviderApp.fetch(
+          new Request("https://squirrel.test/api/admin/oauth/tx/tx_1/decision", { method: "POST" }),
+          { ...h.env, OAUTH_PROVIDER: undefined },
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await noProviderApp.fetch(new Request("https://squirrel.test/authorize"), {
+          ...h.env,
+          OAUTH_PROVIDER: {
+            parseAuthRequest: async () => {
+              throw new Error("boom");
+            },
+          } as unknown as WorkerBindings["OAUTH_PROVIDER"],
+        })
+      ).status,
+    ).toBe(400);
   });
 });

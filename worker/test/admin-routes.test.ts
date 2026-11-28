@@ -210,7 +210,7 @@ describe("adminRoutes L2 coverage", () => {
     expect((await req(`/folders/${folderId}`, "DELETE")).status).toBe(200);
     expect((await req(`/folders/${folderId}`, "DELETE")).status).toBe(404);
 
-    // Invalid payloads & 400 validation branches
+    // Invalid payloads, malformed JSON, & query filters
     expect((await req("/folders", "POST", { slug: "!", name: "" })).status).toBe(400);
     expect((await req("/folders/f1", "PUT", { slug: "!" })).status).toBe(400);
     expect((await req("/secrets", "POST", { slug: "!", name: "" })).status).toBe(400);
@@ -219,6 +219,33 @@ describe("adminRoutes L2 coverage", () => {
     expect((await req("/clients", "POST", { type: "bad" })).status).toBe(400);
     expect((await req("/clients/c1", "PATCH", { status: "bad" })).status).toBe(400);
     expect((await req("/clients/missing/rotate-token", "POST", {})).status).toBe(404);
+    expect((await req("/stats?days=bad")).status).toBe(200);
+    expect((await req("/logs?clientId=admin&secretId=s1&decision=allowed&offset=0")).status).toBe(
+      200,
+    );
+    expect((await req("/secrets?folderId=__uncategorized__&service=cf&tag=t1&q=key")).status).toBe(
+      200,
+    );
+
+    const rawBadJson = (path: string, method: string) =>
+      app.fetch(
+        new Request(`https://squirrel.test/api/admin${path}`, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: "{bad",
+        }),
+        h.env,
+      );
+    for (const [path, method] of [
+      ["/folders", "POST"],
+      ["/folders/f1", "PUT"],
+      ["/secrets", "POST"],
+      ["/secrets/s1", "PUT"],
+      ["/clients", "POST"],
+      ["/clients/c1", "PATCH"],
+    ]) {
+      expect((await rawBadJson(path, method)).status).toBe(400);
+    }
   });
 
   it("handles missing OAUTH_PROVIDER and duplicate folder/secret updates", async () => {

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { afterEach, describe, expect, it } from "vitest";
+import { exportJWK, generateKeyPair, SignJWT } from "jose";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { resolveBotBearerToken } from "../src/auth/bot-token";
 import {
   cfAccessMiddleware,
@@ -18,6 +19,7 @@ import { createWorkerTestHarness } from "./miniflare-env";
 const cleanups: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   while (cleanups.length > 0) {
     const fn = cleanups.pop();
     if (fn) await fn();
@@ -83,6 +85,13 @@ describe("DCR guard & CF Access middleware", () => {
         h.env,
       )?.status,
     ).toBe(400);
+    expect(dcrClientRegistrationCheck({ redirect_uris: ["   "] }, h.env)?.status).toBe(400);
+    expect(dcrClientRegistrationCheck({ redirect_uris: ["not-a-valid-url"] }, h.env)?.status).toBe(
+      400,
+    );
+    expect(
+      dcrClientRegistrationCheck({ redirect_uris: ["ftp://localhost/cb"] }, h.env)?.status,
+    ).toBe(400);
   });
 
   it("normalizes CF Access team domain and enforces JWT/Origin rules", async () => {
@@ -134,6 +143,7 @@ describe("DCR guard & CF Access middleware", () => {
     app.use("/api/*", cfAccessMiddleware);
     app.use("/api/*", enforceOriginMiddleware);
     app.post("/api/test", (c) => c.json({ ok: true }));
+    app.get("/api/me", (c) => c.json({ email: c.get("adminEmail") }));
 
     const missingJwt = await app.fetch(
       new Request("https://squirrel.test/api/test", { method: "POST" }),
@@ -197,6 +207,54 @@ describe("DCR guard & CF Access middleware", () => {
       devEnv,
     );
     expect(goodOrigin.status).toBe(200);
+
+    // Valid RS256 Access JWT verification, claim validation, missing AUD, and GET passthrough
+    const { publicKey, privateKey } = await generateKeyPair("RS256");
+    const jwk = await exportJWK(publicKey);
+    const nowSec = Math.floor(Date.now() / 1000);
+    const issuer = "https://nocoo.cloudflareaccess.com";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ keys: [{ ...jwk, kid: "k1", alg: "RS256", use: "sig" }] })),
+    );
+
+    const signJwt = (payload: Record<string, unknown>, sub = "sub_1") =>
+      new SignJWT(payload)
+        .setProtectedHeader({ alg: "RS256", kid: "k1" })
+        .setSubject(sub)
+        .setIssuedAt(nowSec)
+        .setIssuer(issuer)
+        .setAudience("aud_test")
+        .setExpirationTime(nowSec + 300)
+        .sign(privateKey);
+
+    const validJwt = await signJwt({ email: "Admin@Hexly.AI", name: "Nocoo" });
+    const okJwtRes = await app.fetch(
+      new Request("https://squirrel.test/api/me", {
+        method: "GET",
+        headers: { "Cf-Access-Jwt-Assertion": validJwt },
+      }),
+      h.env,
+    );
+    expect(okJwtRes.status).toBe(200);
+    expect(await okJwtRes.json()).toEqual({ email: "admin@hexly.ai" });
+
+    const badClaimsJwt = await signJwt({ email: "not-an-email" }, " ");
+    const badClaimsRes = await app.fetch(
+      new Request("https://squirrel.test/api/me", {
+        headers: { "Cf-Access-Jwt-Assertion": badClaimsJwt },
+      }),
+      h.env,
+    );
+    expect(badClaimsRes.status).toBe(403);
+
+    const missingAudRes = await app.fetch(
+      new Request("https://squirrel.test/api/me", {
+        headers: { "Cf-Access-Jwt-Assertion": validJwt },
+      }),
+      { ...h.env, CF_ACCESS_AUD: "" },
+    );
+    expect(missingAudRes.status).toBe(403);
   });
 });
 
@@ -353,7 +411,8 @@ describe("Bot bearer tokens & MCP tools", () => {
     );
     expect(getRes.status).toBe(405);
 
-    const callRpc = async (body: unknown) => {
+    const waitUntil = vi.fn((p: Promise<unknown>) => p);
+    const callRpc = async (body: unknown, overrideCaller: McpCallerContext = caller) => {
       const res = await handleMcpRequest(
         new Request("https://squirrel.test/mcp", {
           method: "POST",
@@ -364,7 +423,8 @@ describe("Bot bearer tokens & MCP tools", () => {
           body: JSON.stringify(body),
         }),
         h.env,
-        caller,
+        overrideCaller,
+        { waitUntil },
       );
       expect(res.status).toBe(200);
       return res.json() as Promise<{
@@ -517,5 +577,89 @@ describe("Bot bearer tokens & MCP tools", () => {
       });
       expect(suspRes.result?.isError).toBe(true);
     }
+
+    // Secret-level guards: missing secret, list-only scope, disabled secret, expired secret, missing client policy
+    await upsertClientPolicy(h.env.DB, {
+      clientId: "cli_mcp",
+      displayName: "Gemini Test",
+      registrationType: "dcr",
+      allowAll: true,
+      allowedFolderIds: [],
+      allowedSecretIds: [],
+      allowPlaintextRead: true,
+      status: "active",
+      now,
+    });
+
+    const missingSec = await callRpc({
+      jsonrpc: "2.0",
+      id: 30,
+      method: "tools/call",
+      params: {
+        name: "get_secret",
+        arguments: { secret_id: "nonexistent-slug", reason: "test missing" },
+      },
+    });
+    expect(missingSec.result?.isError).toBe(true);
+    expect(JSON.parse(missingSec.result?.content?.[0]?.text ?? "{}").error).toBe(
+      "SECRET_NOT_FOUND",
+    );
+
+    const listOnlyRes = await callRpc(
+      {
+        jsonrpc: "2.0",
+        id: 31,
+        method: "tools/call",
+        params: {
+          name: "get_secret",
+          arguments: { secret_id: "openai-key", reason: "no read scope" },
+        },
+      },
+      { ...caller, scopes: ["secrets:list"] },
+    );
+    expect(JSON.parse(listOnlyRes.result?.content?.[0]?.text ?? "{}").error).toBe(
+      "PLAINTEXT_READ_DISABLED",
+    );
+
+    await createSecret(h.env.DB, {
+      id: "sec_dis",
+      folderId: "fld_ai",
+      slug: "disabled-key",
+      name: "Disabled Key",
+      service: "openai",
+      description: "",
+      tags: [],
+      metadata: {},
+      maskedPreview: "••••",
+      ciphertext: enc1.ciphertext,
+      iv: enc1.iv,
+      isEnabled: false,
+      expiresAt: null,
+      now,
+    });
+    const disabledRes = await callRpc({
+      jsonrpc: "2.0",
+      id: 32,
+      method: "tools/call",
+      params: {
+        name: "get_secret",
+        arguments: { secret_id: "disabled-key", reason: "test disabled" },
+      },
+    });
+    expect(JSON.parse(disabledRes.result?.content?.[0]?.text ?? "{}").error).toBe(
+      "SECRET_DISABLED",
+    );
+
+    const unknownCallerRes = await callRpc(
+      {
+        jsonrpc: "2.0",
+        id: 33,
+        method: "tools/call",
+        params: { name: "whoami", arguments: {} },
+      },
+      { ...caller, clientId: "cli_nonexistent" },
+    );
+    expect(unknownCallerRes.result?.isError).toBe(true);
+    expect(waitUntil).toHaveBeenCalled();
   });
 });
